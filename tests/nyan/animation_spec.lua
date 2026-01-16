@@ -1,0 +1,61 @@
+local animation = require("nyan.animation")
+local config = require("nyan.config")
+
+describe("animation", function()
+  before_each(function()
+    -- Reset state
+    animation.stop()
+    config.setup({})
+  end)
+
+  after_each(function()
+    -- Cleanup
+    animation.cleanup()
+  end)
+
+  describe("is_running", function()
+    it("returns false initially", function()
+      assert.is_false(animation.is_running())
+    end)
+  end)
+
+  describe("start and stop", function()
+    it("starts animation", function()
+      animation.start()
+      assert.is_true(animation.is_running())
+    end)
+
+    it("stops animation", function()
+      animation.start()
+      animation.stop()
+      assert.is_false(animation.is_running())
+    end)
+
+    it("does not start when animation disabled", function()
+      config.setup({ animation = { enabled = false } })
+      animation.start()
+      assert.is_false(animation.is_running())
+    end)
+  end)
+
+  describe("toggle", function()
+    it("starts when stopped", function()
+      animation.toggle()
+      assert.is_true(animation.is_running())
+    end)
+
+    it("stops when running", function()
+      animation.start()
+      animation.toggle()
+      assert.is_false(animation.is_running())
+    end)
+  end)
+
+  describe("cleanup", function()
+    it("stops animation", function()
+      animation.start()
+      animation.cleanup()
+      assert.is_false(animation.is_running())
+    end)
+  end)
+end)
