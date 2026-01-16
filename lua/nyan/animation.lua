@@ -8,7 +8,7 @@ local M = {}
 -- State
 local timer = nil
 local is_running = false
-local user_stopped = false  -- Track if user explicitly stopped animation
+local user_stopped = false -- Track if user explicitly stopped animation
 
 --- Timer callback - advances frame and triggers redraw
 local function tick()

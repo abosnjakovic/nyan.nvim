@@ -144,10 +144,7 @@ local function load_sprites()
 
   if #cat_ids > 0 then
     if #cat_ids < 6 then
-      vim.notify(
-        string.format("nyan.nvim: Only %d of 6 cat frames loaded", #cat_ids),
-        vim.log.levels.WARN
-      )
+      vim.notify(string.format("nyan.nvim: Only %d of 6 cat frames loaded", #cat_ids), vim.log.levels.WARN)
     end
     render.init(cat_ids, rainbow_id)
     config.log("Render module initialised with graphics mode")
