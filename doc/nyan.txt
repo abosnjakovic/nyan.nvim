@@ -16,6 +16,8 @@ Table of Contents                                     *nyan-table-of-contents*
 ==============================================================================
 1. nyan.nvim                                                  *nyan-nyan.nvim*
 
+
+
 Your statusline deserves a rainbow. nyan.nvim brings the iconic Nyan Cat to
 Neovim, complete with animated frames and a rainbow trail that grows as you
 scroll through your code.
