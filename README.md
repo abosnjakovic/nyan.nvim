@@ -22,7 +22,7 @@ Using lazy.nvim:
 
 ```lua
 {
-  "your-username/nyan.nvim",
+  "abosnjakovic/nyan.nvim",
   config = true,
 }
 ```
@@ -31,7 +31,7 @@ Using packer.nvim:
 
 ```lua
 use {
-  "your-username/nyan.nvim",
+  "abosnjakovic/nyan.nvim",
   config = function()
     require("nyan").setup()
   end
