@@ -1,6 +1,6 @@
 # nyan.nvim
 
-<!-- Image placeholder: user will add later -->
+<img width="3002" height="84" alt="image" src="https://github.com/user-attachments/assets/a714ed70-4041-4f83-b41c-773c753c4437" />
 
 Your statusline deserves a rainbow. nyan.nvim brings the iconic Nyan Cat to Neovim, complete with animated frames and a rainbow trail that grows as you scroll through your code.
 
