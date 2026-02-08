@@ -30,6 +30,14 @@ describe("config", function()
     it("has debug disabled by default", function()
       assert.is_false(config.get().debug)
     end)
+
+    it("has classic theme by default", function()
+      assert.equals("classic", config.get().theme)
+    end)
+
+    it("has transparent disabled by default", function()
+      assert.is_false(config.get().transparent)
+    end)
   end)
 
   describe("setup", function()
@@ -55,6 +63,16 @@ describe("config", function()
     it("can enable debug mode", function()
       config.setup({ debug = true })
       assert.is_true(config.get().debug)
+    end)
+
+    it("can set dark theme", function()
+      config.setup({ theme = "dark" })
+      assert.equals("dark", config.get().theme)
+    end)
+
+    it("can enable transparency", function()
+      config.setup({ transparent = true })
+      assert.is_true(config.get().transparent)
     end)
   end)
 

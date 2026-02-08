@@ -7,6 +7,8 @@
 ---@field animation NyanAnimationConfig Animation settings
 ---@field min_buffer_lines number Minimum lines to show component
 ---@field fallback "ascii"|"none" Fallback mode if graphics not supported
+---@field theme "classic"|"dark" Rainbow colour palette
+---@field transparent boolean Force transparent background on highlights
 ---@field debug boolean Enable debug logging
 
 local M = {}
@@ -20,6 +22,8 @@ M.defaults = {
   },
   min_buffer_lines = 10,
   fallback = "ascii",
+  theme = "classic",
+  transparent = false,
   debug = false,
 }
 

@@ -119,14 +119,18 @@ local function render_ascii(rainbow_length)
 
   local result = {}
 
-  -- Rainbow trail
+  -- Rainbow trail (coloured per-character using NyanRainbow1..6 highlights)
   if rainbow_length > 0 then
     local rainbow_char = ASCII_RAINBOW[(current_frame % #ASCII_RAINBOW) + 1]
-    table.insert(result, string.rep(rainbow_char, rainbow_length))
+    local num_colours = 6
+    for i = 1, rainbow_length do
+      local hl_idx = ((i - 1) % num_colours) + 1
+      table.insert(result, string.format("%%#NyanRainbow%d#%s%%*", hl_idx, rainbow_char))
+    end
   end
 
   -- Cat
-  table.insert(result, cat)
+  table.insert(result, string.format("%%#NyanCat#%s%%*", cat))
 
   -- Padding
   if padding > 0 then

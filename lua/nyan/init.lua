@@ -20,15 +20,33 @@ local function get_plugin_dir()
   return vim.fn.fnamemodify(script_path, ":h:h:h") -- Go up 3 levels: init.lua -> nyan -> lua -> plugin root
 end
 
+-- Colour palettes for rainbow highlights
+local PALETTES = {
+  classic = {
+    cat = "#ffaaff",
+    rainbow = { "#ff6666", "#ffaa66", "#ffff66", "#66ff66", "#6666ff", "#ff66ff" },
+  },
+  dark = {
+    cat = "#994d99",
+    rainbow = { "#992222", "#995522", "#807720", "#228833", "#223399", "#882288" },
+  },
+}
+
 --- Setup highlight groups for fallback mode
 local function setup_fallback_highlights()
-  vim.api.nvim_set_hl(0, "NyanCat", { fg = "#ffaaff", bold = true, default = true })
-  vim.api.nvim_set_hl(0, "NyanRainbow1", { fg = "#ff6666", default = true })
-  vim.api.nvim_set_hl(0, "NyanRainbow2", { fg = "#ffaa66", default = true })
-  vim.api.nvim_set_hl(0, "NyanRainbow3", { fg = "#ffff66", default = true })
-  vim.api.nvim_set_hl(0, "NyanRainbow4", { fg = "#66ff66", default = true })
-  vim.api.nvim_set_hl(0, "NyanRainbow5", { fg = "#6666ff", default = true })
-  vim.api.nvim_set_hl(0, "NyanRainbow6", { fg = "#ff66ff", default = true })
+  local cfg = config.get()
+  local palette = PALETTES[cfg.theme] or PALETTES.classic
+  local bg = cfg.transparent and "NONE" or nil
+
+  local cat_hl = { fg = palette.cat, bold = true, default = true }
+  if bg then cat_hl.bg = bg end
+  vim.api.nvim_set_hl(0, "NyanCat", cat_hl)
+
+  for i, colour in ipairs(palette.rainbow) do
+    local hl = { fg = colour, default = true }
+    if bg then hl.bg = bg end
+    vim.api.nvim_set_hl(0, "NyanRainbow" .. i, hl)
+  end
 end
 
 --- Setup autocommands

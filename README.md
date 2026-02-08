@@ -69,6 +69,8 @@ require("nyan").setup({
   },
   min_buffer_lines = 10,   -- Hide in tiny buffers
   fallback = "ascii",      -- "ascii" or "none" when graphics unavailable
+  theme = "classic",       -- "classic" (bright) or "dark" (muted) rainbow
+  transparent = false,     -- Force transparent background on highlights
   debug = false,           -- Enable debug logging
 })
 ```
