@@ -60,4 +60,43 @@ describe("render", function()
       assert.is_boolean(result)
     end)
   end)
+
+  describe("dispatcher", function()
+    it("delegates render to space renderer by default", function()
+      config.setup({ renderer = "space", width = 22, min_buffer_lines = 1 })
+      local buf = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_set_current_buf(buf)
+      local lines = {}
+      for i = 1, 20 do
+        lines[i] = "line " .. i
+      end
+      vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+
+      local result = render.render()
+      -- Space renderer output contains brackets
+      local plain = result:gsub("%%#[^#]+#", ""):gsub("%%*", "")
+      assert.equals("[", plain:sub(1, 1))
+      assert.equals("]", plain:sub(-1))
+
+      vim.api.nvim_buf_delete(buf, { force = true })
+    end)
+
+    it("delegates render to nyan renderer when configured", function()
+      config.setup({ renderer = "nyan", min_buffer_lines = 1 })
+      local buf = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_set_current_buf(buf)
+      local lines = {}
+      for i = 1, 20 do
+        lines[i] = "line " .. i
+      end
+      vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+
+      local result = render.render()
+      -- Nyan renderer output does NOT contain brackets
+      local plain = result:gsub("%%#[^#]+#", ""):gsub("%%*", "")
+      assert.is_not.equals("[", plain:sub(1, 1))
+
+      vim.api.nvim_buf_delete(buf, { force = true })
+    end)
+  end)
 end)
