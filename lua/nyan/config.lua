@@ -3,6 +3,7 @@
 ---@field fps number Frames per second
 
 ---@class NyanConfig
+---@field renderer "space"|"nyan" Active renderer
 ---@field width number Total component width in terminal cells
 ---@field animation NyanAnimationConfig Animation settings
 ---@field min_buffer_lines number Minimum lines to show component
@@ -15,6 +16,7 @@ local M = {}
 
 ---@type NyanConfig
 M.defaults = {
+  renderer = "space",
   width = 20,
   animation = {
     enabled = true,

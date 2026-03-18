@@ -38,6 +38,10 @@ describe("config", function()
     it("has transparent disabled by default", function()
       assert.is_false(config.get().transparent)
     end)
+
+    it("has space renderer by default", function()
+      assert.equals("space", config.get().renderer)
+    end)
   end)
 
   describe("setup", function()
