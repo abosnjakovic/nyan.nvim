@@ -1,20 +1,28 @@
 # nyan.nvim
 
+A Neovim statusline component with two rendering modes: a space-themed scroll minimap (default) that shows LSP diagnostics and git changes at a glance, and the classic animated Nyan Cat with a rainbow trail.
+
+## Space Theme (default)
+
+```
+[ · │ · ✕ · ▷ · · · ✕ · · │ · · · · · ]
+```
+
+The space theme turns your statusline into a minimap of the current buffer. The ship `▷` shows your cursor position, diagnostic markers `✕` show LSP errors/warnings at their proportional file location, and git change markers `│` show where hunks are. Colours distinguish severity and change type — you get a spatial overview of your file's health without leaving your code.
+
+Git markers work with gitsigns (instant, in-memory) or fall back to `git diff` (no extra plugins required). Diagnostic markers use Neovim's built-in `vim.diagnostic` API.
+
+## Nyan Cat Mode
+
 <img width="3002" height="84" alt="image" src="https://github.com/user-attachments/assets/a714ed70-4041-4f83-b41c-773c753c4437" />
 
-Your statusline deserves a rainbow. nyan.nvim brings the iconic Nyan Cat to Neovim, complete with animated frames and a rainbow trail that grows as you scroll through your code.
-
-## Features
-
-nyan.nvim uses the Kitty Graphics Protocol to display actual animated pixel art in your terminal. For terminals that don't support it, there's a colourful ASCII fallback so no one misses out on the fun.
-
-The rainbow trail length shows your scroll position in the buffer — watch it grow as you venture deeper into your code. Animation runs at 6 fps by default and automatically pauses when Neovim loses focus to save your CPU for more important things (like compiling).
+The classic mode uses the Kitty Graphics Protocol to display animated pixel art in your terminal. For terminals that don't support it, there's a colourful ASCII fallback. The rainbow trail length shows your scroll position — watch it grow as you venture deeper into your code.
 
 ## Requirements
 
 - Neovim 0.10+
-- For graphics mode: Kitty terminal (or compatible) that supports the Kitty Graphics Protocol
-- For the best experience: a mass of code to scroll through
+- For Nyan Cat graphics mode: a terminal supporting the Kitty Graphics Protocol (Kitty, Ghostty, etc.)
+- For git markers with instant updates: gitsigns.nvim (optional — falls back to `git diff`)
 
 ## Installation
 
@@ -52,28 +60,49 @@ require("lualine").setup({
 })
 ```
 
-## Commands
-
-- `:NyanStart` — Start the animation
-- `:NyanStop` — Stop the animation
-- `:NyanToggle` — Toggle animation on/off
-
 ## Configuration
 
 ```lua
 require("nyan").setup({
-  width = 20,              -- Total component width in cells
+  renderer = "space",          -- "space" (minimap) or "nyan" (classic cat)
+  width = 20,                  -- Total component width in cells
+  min_buffer_lines = 10,       -- Hide in tiny buffers
+  debug = false,               -- Enable debug logging
+
+  -- Nyan renderer only:
   animation = {
-    enabled = true,        -- Enable animation
-    fps = 6,               -- Frames per second
+    enabled = true,            -- Enable animation
+    fps = 6,                   -- Frames per second
   },
-  min_buffer_lines = 10,   -- Hide in tiny buffers
-  fallback = "ascii",      -- "ascii" or "none" when graphics unavailable
-  theme = "classic",       -- "classic" (bright) or "dark" (muted) rainbow
-  transparent = false,     -- Force transparent background on highlights
-  debug = false,           -- Enable debug logging
+  fallback = "ascii",          -- "ascii" or "none" when graphics unavailable
+  theme = "classic",           -- "classic" (bright) or "dark" (muted) rainbow
+  transparent = false,         -- Force transparent background on highlights
 })
 ```
+
+### Space Theme Highlights
+
+The space theme links to your existing colourscheme highlight groups by default:
+
+| Group | Links To | Used For |
+|---|---|---|
+| `NyanShip` | — (bright white) | Ship indicator `▷` |
+| `NyanTrail` | `Comment` | Trail dots `·` |
+| `NyanBracket` | `Comment` | Brackets `[ ]` |
+| `NyanDiagError` | `DiagnosticError` | Error markers `✕` |
+| `NyanDiagWarn` | `DiagnosticWarn` | Warning markers `✕` |
+| `NyanDiagInfo` | `DiagnosticInfo` | Info markers `✕` |
+| `NyanDiagHint` | `DiagnosticHint` | Hint markers `✕` |
+| `NyanGitStaged` | `GitSignsAdd` | Staged changes `│` |
+| `NyanGitUnstaged` | `GitSignsChange` | Unstaged changes `│` |
+| `NyanGitAdded` | `GitSignsAdd` | Added hunks `│` |
+| `NyanGitRemoved` | `GitSignsDelete` | Removed hunks `│` |
+
+## Commands
+
+- `:NyanStart` — Start the animation (nyan mode)
+- `:NyanStop` — Stop the animation (nyan mode)
+- `:NyanToggle` — Toggle animation on/off (nyan mode)
 
 ## API
 

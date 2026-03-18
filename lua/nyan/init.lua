@@ -97,6 +97,8 @@ local function setup_autocommands()
   end
 
   if cfg.renderer == "space" then
+    local git_provider = require("nyan.providers.git")
+
     vim.api.nvim_create_autocmd({ "DiagnosticChanged" }, {
       group = augroup,
       callback = function()
@@ -107,6 +109,14 @@ local function setup_autocommands()
       group = augroup,
       pattern = "GitSignsUpdate",
       callback = function()
+        vim.cmd("redrawstatus")
+      end,
+    })
+    -- Invalidate git diff cache on write and buffer enter
+    vim.api.nvim_create_autocmd({ "BufWritePost", "BufEnter", "FocusGained" }, {
+      group = augroup,
+      callback = function(ev)
+        git_provider.invalidate(ev.buf)
         vim.cmd("redrawstatus")
       end,
     })
