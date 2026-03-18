@@ -6,6 +6,7 @@ local position = require("nyan.position")
 local animation = require("nyan.animation")
 local render = require("nyan.render")
 local kitty = require("nyan.kitty")
+local space_renderer = require("nyan.renderers.space")
 
 local M = {}
 
@@ -32,20 +33,24 @@ local PALETTES = {
   },
 }
 
---- Setup highlight groups for fallback mode
-local function setup_fallback_highlights()
+--- Setup highlight groups
+local function setup_highlights()
   local cfg = config.get()
-  local palette = PALETTES[cfg.theme] or PALETTES.classic
-  local bg = cfg.transparent and "NONE" or nil
+  if cfg.renderer == "space" then
+    space_renderer.setup_highlights()
+  else
+    local palette = PALETTES[cfg.theme] or PALETTES.classic
+    local bg = cfg.transparent and "NONE" or nil
 
-  local cat_hl = { fg = palette.cat, bold = true, default = true }
-  if bg then cat_hl.bg = bg end
-  vim.api.nvim_set_hl(0, "NyanCat", cat_hl)
+    local cat_hl = { fg = palette.cat, bold = true, default = true }
+    if bg then cat_hl.bg = bg end
+    vim.api.nvim_set_hl(0, "NyanCat", cat_hl)
 
-  for i, colour in ipairs(palette.rainbow) do
-    local hl = { fg = colour, default = true }
-    if bg then hl.bg = bg end
-    vim.api.nvim_set_hl(0, "NyanRainbow" .. i, hl)
+    for i, colour in ipairs(palette.rainbow) do
+      local hl = { fg = colour, default = true }
+      if bg then hl.bg = bg end
+      vim.api.nvim_set_hl(0, "NyanRainbow" .. i, hl)
+    end
   end
 end
 
@@ -56,33 +61,52 @@ local function setup_autocommands()
   -- Maintain highlights after colorscheme changes
   vim.api.nvim_create_autocmd("ColorScheme", {
     group = augroup,
-    callback = setup_fallback_highlights,
+    callback = setup_highlights,
   })
 
-  -- Pause animation on focus lost (save CPU)
-  vim.api.nvim_create_autocmd("FocusLost", {
-    group = augroup,
-    callback = function()
-      animation.pause()
-    end,
-  })
+  local cfg = config.get()
+  if cfg.renderer == "nyan" then
+    -- Pause animation on focus lost (save CPU)
+    vim.api.nvim_create_autocmd("FocusLost", {
+      group = augroup,
+      callback = function()
+        animation.pause()
+      end,
+    })
 
-  -- Resume animation on focus gained (respects user's explicit stop)
-  vim.api.nvim_create_autocmd("FocusGained", {
-    group = augroup,
-    callback = function()
-      animation.resume()
-    end,
-  })
+    -- Resume animation on focus gained (respects user's explicit stop)
+    vim.api.nvim_create_autocmd("FocusGained", {
+      group = augroup,
+      callback = function()
+        animation.resume()
+      end,
+    })
 
-  -- Cleanup on exit
-  vim.api.nvim_create_autocmd("VimLeavePre", {
-    group = augroup,
-    callback = function()
-      animation.cleanup()
-      kitty.delete_all_images()
-    end,
-  })
+    -- Cleanup on exit
+    vim.api.nvim_create_autocmd("VimLeavePre", {
+      group = augroup,
+      callback = function()
+        animation.cleanup()
+        kitty.delete_all_images()
+      end,
+    })
+  end
+
+  if cfg.renderer == "space" then
+    vim.api.nvim_create_autocmd({ "DiagnosticChanged" }, {
+      group = augroup,
+      callback = function()
+        vim.cmd("redrawstatus")
+      end,
+    })
+    vim.api.nvim_create_autocmd({ "User" }, {
+      group = augroup,
+      pattern = "GitSignsUpdate",
+      callback = function()
+        vim.cmd("redrawstatus")
+      end,
+    })
+  end
 end
 
 --- Setup user commands
@@ -195,8 +219,8 @@ M.setup = function(opts)
   config.log("Configuration:", cfg)
 
   -- Setup highlights
-  setup_fallback_highlights()
-  config.log("Fallback highlights created")
+  setup_highlights()
+  config.log("Highlights created")
 
   -- Setup autocommands
   setup_autocommands()
@@ -206,16 +230,18 @@ M.setup = function(opts)
   setup_commands()
   config.log("User commands created")
 
-  -- Try to load sprites (will use fallback if fails)
-  local sprites_loaded = load_sprites()
-  config.log("Sprites loaded:", sprites_loaded)
+  if cfg.renderer == "nyan" then
+    -- Try to load sprites (will use fallback if fails)
+    local sprites_loaded = load_sprites()
+    config.log("Sprites loaded:", sprites_loaded)
 
-  -- Start animation if enabled
-  if cfg.animation.enabled then
-    config.log("Starting animation (fps=" .. cfg.animation.fps .. ")")
-    animation.start()
-  else
-    config.log("Animation disabled in config")
+    -- Start animation if enabled
+    if cfg.animation.enabled then
+      config.log("Starting animation (fps=" .. cfg.animation.fps .. ")")
+      animation.start()
+    else
+      config.log("Animation disabled in config")
+    end
   end
 
   initialized = true
