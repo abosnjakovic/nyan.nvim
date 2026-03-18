@@ -43,12 +43,16 @@ local function setup_highlights()
     local bg = cfg.transparent and "NONE" or nil
 
     local cat_hl = { fg = palette.cat, bold = true, default = true }
-    if bg then cat_hl.bg = bg end
+    if bg then
+      cat_hl.bg = bg
+    end
     vim.api.nvim_set_hl(0, "NyanCat", cat_hl)
 
     for i, colour in ipairs(palette.rainbow) do
       local hl = { fg = colour, default = true }
-      if bg then hl.bg = bg end
+      if bg then
+        hl.bg = bg
+      end
       vim.api.nvim_set_hl(0, "NyanRainbow" .. i, hl)
     end
   end
