@@ -67,7 +67,7 @@ require("lualine").setup({
 ```lua
 require("nyan").setup({
   renderer = "space",          -- "space" (minimap) or "nyan" (classic cat)
-  width = 20,                  -- Total component width in cells
+  width = 45,                  -- Total component width in cells
   min_buffer_lines = 10,       -- Hide in tiny buffers
   debug = false,               -- Enable debug logging
 
