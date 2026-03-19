@@ -2,6 +2,8 @@
 
 A Neovim statusline component with two rendering modes: a space-themed scroll minimap (default) that shows LSP diagnostics and git changes at a glance, and the classic animated Nyan Cat with a rainbow trail.
 
+<img width="1410" height="954" alt="image" src="https://github.com/user-attachments/assets/e097b2b3-9e6f-4f48-8f1d-f9d9cd064e6f" />
+
 ## Space Theme (default)
 
 ```
