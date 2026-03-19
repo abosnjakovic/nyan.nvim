@@ -17,7 +17,7 @@ local M = {}
 ---@type NyanConfig
 M.defaults = {
   renderer = "space",
-  width = 20,
+  width = 45,
   animation = {
     enabled = true,
     fps = 6,

@@ -8,7 +8,7 @@ describe("config", function()
 
   describe("defaults", function()
     it("has correct default width", function()
-      assert.equals(20, config.get().width)
+      assert.equals(45, config.get().width)
     end)
 
     it("has animation enabled by default", function()
