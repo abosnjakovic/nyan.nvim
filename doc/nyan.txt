@@ -22,6 +22,8 @@ minimap (default) that shows LSP diagnostics and git changes at a glance, and
 the classic animated Nyan Cat with a rainbow trail.
 
 
+
+
 SPACE THEME (DEFAULT)                   *nyan-nyan.nvim-space-theme-(default)*
 
 >
