@@ -1,13 +1,67 @@
-name: "release"
+name: release
+
 on:
   push:
     tags:
       - 'v*'
+
+permissions:
+  contents: write
+
 jobs:
+  github-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version from tag
+        id: version
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${REF_NAME#v}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Extract changelog entry
+        id: changelog
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          tmp=$(mktemp)
+          awk -v ver="$VERSION" '
+            BEGIN { in_section = 0 }
+            /^## / {
+              if (in_section) exit
+              if ($0 ~ "^## \\[?" ver) { in_section = 1; next }
+            }
+            in_section { print }
+          ' CHANGELOG.md > "$tmp"
+
+          {
+            echo "body<<CHANGELOG_EOF"
+            cat "$tmp"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          BODY: ${{ steps.changelog.outputs.body }}
+        run: |
+          set -euo pipefail
+          gh release create "v${VERSION}" \
+            --title "v${VERSION}" \
+            --notes "${BODY}"
+
   luarocks-upload:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: LuaRocks Upload
         uses: nvim-neorocks/luarocks-tag-release@v7
         env:

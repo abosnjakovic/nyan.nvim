@@ -8,7 +8,7 @@ local cache = {}
 ---@param header string The @@ line
 ---@return { line: number, type: string }?
 local function parse_hunk_header(header)
-  local old_start, old_count, new_start, new_count = header:match("@@ %-(%d+),?(%d*) %+(%d+),?(%d*) @@")
+  local _, old_count, new_start, new_count = header:match("@@ %-(%d+),?(%d*) %+(%d+),?(%d*) @@")
   if not new_start then
     return nil
   end
