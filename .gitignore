@@ -1,2 +1,4 @@
 vendor/plenary.nvim
 .claude
+.stylua-cache
+scripts/.env

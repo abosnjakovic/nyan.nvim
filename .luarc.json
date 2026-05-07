@@ -1,0 +1,17 @@
+{
+  "runtime.version": "LuaJIT",
+  "diagnostics.globals": [
+    "vim",
+    "describe",
+    "it",
+    "before_each",
+    "after_each",
+    "setup",
+    "teardown",
+    "pending",
+    "assert"
+  ],
+  "diagnostics.disable": ["missing-fields"],
+  "workspace.library": ["${3rd}/luv/library"],
+  "workspace.checkThirdParty": false
+}
