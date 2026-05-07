@@ -1,4 +1,5 @@
-*nyan.txt*            For Neovim >= 0.8.0           Last change: 2026 March 19
+*nyan.txt*
+                               For Neovim >= 0.8.0    Last change: 2026 May 07
 
 ==============================================================================
 Table of Contents                                     *nyan-table-of-contents*
