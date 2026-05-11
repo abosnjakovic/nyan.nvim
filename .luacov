@@ -1,0 +1,5 @@
+return {
+  include = { "lua/nyan" },
+  exclude = { "tests" },
+  reporter = "default",
+}

@@ -2,3 +2,6 @@ vendor/plenary.nvim
 .claude
 .stylua-cache
 scripts/.env
+luacov.stats.out
+luacov.report.out
+.luacov.stats.*.out
