@@ -1,88 +1,70 @@
 name: release
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump (auto|patch|minor|major)"
+        required: true
+        default: "auto"
+        type: choice
+        options: [auto, patch, minor, major]
 
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - id: rp
-        uses: googleapis/release-please-action@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          config-file: release-please-config.json
-          manifest-file: .release-please-manifest.json
-
-      - if: ${{ steps.rp.outputs.release_created == 'true' }}
-        uses: actions/checkout@v5
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - if: ${{ steps.rp.outputs.release_created == 'true' }}
-        uses: kdheepak/panvimdoc@main
+      - name: Bump version and update CHANGELOG
+        id: bump
+        env:
+          BUMP: ${{ inputs.bump }}
+          RELEASE_NOTES_PATH: ${{ runner.temp }}/release-notes.md
+        run: |
+          set -euo pipefail
+          out=$(./scripts/release.sh --bump "$BUMP")
+          echo "$out"
+          echo "$out" >> "$GITHUB_OUTPUT"
+
+      - uses: kdheepak/panvimdoc@main
         with:
           vimdoc: nyan
           version: "Neovim >= 0.8.0"
           demojify: true
           treesitter: true
 
-      - if: ${{ steps.rp.outputs.release_created == 'true' }}
-        name: Commit vimdoc and move tag
+      - name: Commit, tag, push
         env:
-          TAG: ${{ steps.rp.outputs.tag_name }}
+          NEXT_VERSION: ${{ steps.bump.outputs.NEXT_VERSION }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          if ! git diff --quiet -- doc/; then
-            git add doc/
-            git commit -m "chore(release): regenerate vimdoc for ${TAG}"
-            git push origin HEAD:main
-            git tag -f "${TAG}"
-            git push origin "${TAG}" --force
-          fi
+          git add version.txt CHANGELOG.md doc/
+          git commit -m "chore(release): v${NEXT_VERSION}"
+          git tag "v${NEXT_VERSION}"
+          git push origin HEAD:main
+          git push origin "v${NEXT_VERSION}"
 
-      - if: ${{ steps.rp.outputs.release_created == 'true' }}
-        id: changelog
-        env:
-          VERSION: ${{ steps.rp.outputs.version }}
-        run: |
-          set -euo pipefail
-          tmp=$(mktemp)
-          awk -v ver="$VERSION" '
-            BEGIN { in_section = 0 }
-            /^## / {
-              if (in_section) exit
-              if ($0 ~ "^## \\[?" ver) { in_section = 1; next }
-            }
-            in_section { print }
-          ' CHANGELOG.md > "$tmp"
-          {
-            echo "body<<CHANGELOG_EOF"
-            cat "$tmp"
-            echo "CHANGELOG_EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - if: ${{ steps.rp.outputs.release_created == 'true' }}
-        name: Create GitHub release
+      - name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.rp.outputs.tag_name }}
-          BODY: ${{ steps.changelog.outputs.body }}
+          NEXT_VERSION: ${{ steps.bump.outputs.NEXT_VERSION }}
+          NOTES_FILE: ${{ steps.bump.outputs.RELEASE_NOTES_PATH }}
         run: |
           set -euo pipefail
-          gh release create "${TAG}" \
-            --title "${TAG}" \
-            --notes "${BODY}"
+          gh release create "v${NEXT_VERSION}" \
+            --title "v${NEXT_VERSION}" \
+            --notes-file "${NOTES_FILE}"
 
-      - if: ${{ steps.rp.outputs.release_created == 'true' }}
-        name: LuaRocks upload
+      - name: LuaRocks upload
         uses: nvim-neorocks/luarocks-tag-release@v7
         env:
           LUAROCKS_API_KEY: ${{ secrets.LUAROCKS_API_KEY }}
