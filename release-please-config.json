@@ -8,7 +8,21 @@
     ".": {
       "package-name": "nyan.nvim",
       "extra-files": ["version.txt"],
-      "changelog-path": "CHANGELOG.md"
+      "changelog-path": "CHANGELOG.md",
+      "changelog-sections": [
+        { "type": "feat", "section": "Features" },
+        { "type": "fix", "section": "Bug Fixes" },
+        { "type": "perf", "section": "Performance Improvements" },
+        { "type": "revert", "section": "Reverts" },
+        { "type": "refactor", "section": "Code Refactoring" },
+        { "type": "test", "section": "Tests" },
+        { "type": "tests", "section": "Tests" },
+        { "type": "build", "section": "Build System" },
+        { "type": "ci", "section": "Continuous Integration" },
+        { "type": "docs", "section": "Documentation" },
+        { "type": "chore", "section": "Miscellaneous Chores", "hidden": true },
+        { "type": "style", "section": "Styles", "hidden": true }
+      ]
     }
   }
 }
