@@ -2,33 +2,56 @@ name: release
 
 on:
   push:
-    tags:
-      - 'v*'
+    branches: [main]
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
-  github-release:
+  release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - id: rp
+        uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+      - if: ${{ steps.rp.outputs.release_created == 'true' }}
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
-      - name: Resolve version from tag
-        id: version
+      - if: ${{ steps.rp.outputs.release_created == 'true' }}
+        uses: kdheepak/panvimdoc@main
+        with:
+          vimdoc: nyan
+          version: "Neovim >= 0.8.0"
+          demojify: true
+          treesitter: true
+
+      - if: ${{ steps.rp.outputs.release_created == 'true' }}
+        name: Commit vimdoc and move tag
         env:
-          REF_NAME: ${{ github.ref_name }}
+          TAG: ${{ steps.rp.outputs.tag_name }}
         run: |
           set -euo pipefail
-          version="${REF_NAME#v}"
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if ! git diff --quiet -- doc/; then
+            git add doc/
+            git commit -m "chore(release): regenerate vimdoc for ${TAG}"
+            git push origin HEAD:main
+            git tag -f "${TAG}"
+            git push origin "${TAG}" --force
+          fi
 
-      - name: Extract changelog entry
+      - if: ${{ steps.rp.outputs.release_created == 'true' }}
         id: changelog
         env:
-          VERSION: ${{ steps.version.outputs.version }}
+          VERSION: ${{ steps.rp.outputs.version }}
         run: |
           set -euo pipefail
           tmp=$(mktemp)
@@ -40,29 +63,26 @@ jobs:
             }
             in_section { print }
           ' CHANGELOG.md > "$tmp"
-
           {
             echo "body<<CHANGELOG_EOF"
             cat "$tmp"
             echo "CHANGELOG_EOF"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create GitHub release
+      - if: ${{ steps.rp.outputs.release_created == 'true' }}
+        name: Create GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ steps.version.outputs.version }}
+          TAG: ${{ steps.rp.outputs.tag_name }}
           BODY: ${{ steps.changelog.outputs.body }}
         run: |
           set -euo pipefail
-          gh release create "v${VERSION}" \
-            --title "v${VERSION}" \
+          gh release create "${TAG}" \
+            --title "${TAG}" \
             --notes "${BODY}"
 
-  luarocks-upload:
-    runs-on: ubuntu-22.04
-    steps:
-      - uses: actions/checkout@v5
-      - name: LuaRocks Upload
+      - if: ${{ steps.rp.outputs.release_created == 'true' }}
+        name: LuaRocks upload
         uses: nvim-neorocks/luarocks-tag-release@v7
         env:
           LUAROCKS_API_KEY: ${{ secrets.LUAROCKS_API_KEY }}
