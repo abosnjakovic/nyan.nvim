@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.0.1](https://github.com/abosnjakovic/nyan.nvim/compare/v1.0.0...v1.0.1) (2026-05-11)
+
+
+### Tests
+
+* add renderers/nyan spec, lift coverage to 80%, wire luacov ([#4](https://github.com/abosnjakovic/nyan.nvim/issues/4)) ([43f226d](https://github.com/abosnjakovic/nyan.nvim/commit/43f226d4e5fa02b6977cd53ffa8d1b25c7a31e00))
+
+
+### Continuous Integration
+
+* surface test/build/ci/docs in release-please changelog ([#5](https://github.com/abosnjakovic/nyan.nvim/issues/5)) ([d90759d](https://github.com/abosnjakovic/nyan.nvim/commit/d90759da30e3c461ed293873e2c40b87d316f393))
+
 ## 1.0.0 (2026-05-07)
 
 
