@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/abosnjakovic/nyan.nvim/compare/v1.0.1...v1.0.2) (2026-05-11)
+
+
+### Continuous Integration
+
+* unify release flow into single workflow ([#7](https://github.com/abosnjakovic/nyan.nvim/issues/7)) ([8355ccc](https://github.com/abosnjakovic/nyan.nvim/commit/8355ccc5dc8ea975d4c1153d8260e85cfbf6ac68))
+
 ## [1.0.1](https://github.com/abosnjakovic/nyan.nvim/compare/v1.0.0...v1.0.1) (2026-05-11)
 
 
