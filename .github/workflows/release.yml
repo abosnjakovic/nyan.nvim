@@ -63,8 +63,3 @@ jobs:
           gh release create "v${NEXT_VERSION}" \
             --title "v${NEXT_VERSION}" \
             --notes-file "${NOTES_FILE}"
-
-      - name: LuaRocks upload
-        uses: nvim-neorocks/luarocks-tag-release@v7
-        env:
-          LUAROCKS_API_KEY: ${{ secrets.LUAROCKS_API_KEY }}
