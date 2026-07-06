@@ -9,13 +9,6 @@ local M = {}
 
 local health = vim.health
 
---- Plugin root, derived from this file's location (lua/nyan/health.lua -> root).
----@return string
-local function plugin_dir()
-  local script = debug.getinfo(1, "S").source:sub(2)
-  return vim.fn.fnamemodify(script, ":h:h:h")
-end
-
 --- Report Neovim version (setup() hard-requires 0.10 for vim.uv / vim.base64).
 local function check_nvim()
   if vim.fn.has("nvim-0.10") == 1 then
@@ -52,13 +45,9 @@ local function check_terminal()
 end
 
 --- Report that the sprite assets exist and are readable.
+--- Located via the runtime path (cross-platform, cwd-independent) rather than
+--- deriving a path from this file -- the plugin root is always on rtp.
 local function check_assets()
-  local assets = plugin_dir() .. "/assets"
-  if vim.fn.isdirectory(assets) == 0 then
-    health.error("Assets directory not found: " .. assets, "Reinstall the plugin")
-    return
-  end
-
   local expected = { "rainbow.png" }
   for i = 1, 6 do
     expected[#expected + 1] = "cat_frame_" .. i .. ".png"
@@ -66,7 +55,7 @@ local function check_assets()
 
   local missing = {}
   for _, name in ipairs(expected) do
-    if vim.fn.filereadable(assets .. "/" .. name) == 0 then
+    if #vim.api.nvim_get_runtime_file("assets/" .. name, false) == 0 then
       missing[#missing + 1] = name
     end
   end
@@ -76,7 +65,7 @@ local function check_assets()
   elseif #missing < #expected then
     health.warn("Missing sprite assets: " .. table.concat(missing, ", "), "Cat may render partially")
   else
-    health.error("No sprite assets found in " .. assets, "Reinstall the plugin")
+    health.error("No sprite assets found on runtimepath", "Reinstall the plugin")
   end
 end
 
