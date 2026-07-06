@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.1.1](https://github.com/abosnjakovic/nyan.nvim/compare/v1.1.0...v1.1.1) (2026-07-06)
+
+### Bug Fixes
+
+* locate assets via runtimepath (Windows) ([7b0ffe6](https://github.com/abosnjakovic/nyan.nvim/commit/7b0ffe6))
+* locate assets via runtimepath (Windows) ([724ff2e](https://github.com/abosnjakovic/nyan.nvim/commit/724ff2e))
+
+### Continuous Integration
+
+* scan the oldest commit in auto-bump detection ([e399170](https://github.com/abosnjakovic/nyan.nvim/commit/e399170))
+* drop LuaRocks publishing from release workflow ([8814159](https://github.com/abosnjakovic/nyan.nvim/commit/8814159))
+
 ## [1.1.0](https://github.com/abosnjakovic/nyan.nvim/compare/v1.0.1...v1.1.0) (2026-07-06)
 
 ### Features
