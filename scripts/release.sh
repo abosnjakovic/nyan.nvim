@@ -44,7 +44,7 @@ if [ "$BUMP_MODE" = "auto" ]; then
       feat:*|feat\(*\):*)                       [ "$bump" != "major" ] && bump="minor" ;;
       fix:*|fix\(*\):*|perf:*|perf\(*\):*)      [ "$bump" = "none" ] && bump="patch" ;;
     esac
-  done < <(git log "${prev_tag}..HEAD" --pretty=format:"%s" --no-merges)
+  done < <(git log "${prev_tag}..HEAD" --pretty=tformat:"%s" --no-merges)
 else
   bump="$BUMP_MODE"
 fi
