@@ -13,12 +13,12 @@ local M = {}
 -- State
 local initialized = false
 
---- Get plugin directory path
----@return string
-local function get_plugin_dir()
-  local info = debug.getinfo(1, "S")
-  local script_path = info.source:sub(2) -- Remove leading @
-  return vim.fn.fnamemodify(script_path, ":h:h:h") -- Go up 3 levels: init.lua -> nyan -> lua -> plugin root
+--- Locate the bundled assets directory via the runtime path.
+--- Cross-platform and cwd-independent (unlike deriving a path from this file,
+--- which resolves wrong on Windows).
+---@return string? assets_dir Absolute path, or nil if not on runtimepath
+local function get_assets_dir()
+  return vim.api.nvim_get_runtime_file("assets", false)[1]
 end
 
 -- Colour palettes for rainbow highlights
@@ -151,12 +151,11 @@ local function load_sprites()
 
   config.log("Kitty graphics supported!")
 
-  local plugin_dir = get_plugin_dir()
-  local assets_dir = plugin_dir .. "/assets"
+  local assets_dir = get_assets_dir()
   config.log("Assets directory:", assets_dir)
 
   -- Check if assets exist
-  if vim.fn.isdirectory(assets_dir) == 0 then
+  if not assets_dir or vim.fn.isdirectory(assets_dir) == 0 then
     vim.notify("nyan.nvim: Assets directory not found, using ASCII fallback", vim.log.levels.WARN)
     config.log("Assets directory not found!")
     return false
