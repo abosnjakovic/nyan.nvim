@@ -115,6 +115,13 @@ The space theme links to your existing colourscheme highlight groups by default:
 - `require("nyan").is_graphics_mode()` — Check if using Kitty graphics
 - `require("nyan").start()` / `stop()` / `toggle()` — Control animation
 
+## Troubleshooting
+
+Run `:checkhealth nyan`. It reports whether your terminal supports the Kitty
+Graphics Protocol, whether you're inside tmux (and the `allow-passthrough`
+setting graphics need there), and whether the sprite assets are present — which
+covers most "the cat isn't showing" cases.
+
 ## Credits
 
 Inspired by the eternal loop of Nyan Cat and the Emacs nyan-mode https://github.com/TeMPOraL/nyan-mode
