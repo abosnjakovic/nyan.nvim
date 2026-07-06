@@ -1,5 +1,5 @@
 *nyan.txt*
-                               For Neovim >= 0.8.0    Last change: 2026 May 11
+                              For Neovim >= 0.8.0    Last change: 2026 July 06
 
 ==============================================================================
 Table of Contents                                     *nyan-table-of-contents*
@@ -13,6 +13,7 @@ Table of Contents                                     *nyan-table-of-contents*
   - Configuration                               |nyan-nyan.nvim-configuration|
   - Commands                                         |nyan-nyan.nvim-commands|
   - API                                                   |nyan-nyan.nvim-api|
+  - Troubleshooting                           |nyan-nyan.nvim-troubleshooting|
   - Credits                                           |nyan-nyan.nvim-credits|
 
 ==============================================================================
@@ -152,6 +153,14 @@ API                                                       *nyan-nyan.nvim-api*
 - `require("nyan").is_animating()` — Check if animation is running
 - `require("nyan").is_graphics_mode()` — Check if using Kitty graphics
 - `require("nyan").start()` / `stop()` / `toggle()` — Control animation
+
+
+TROUBLESHOOTING                               *nyan-nyan.nvim-troubleshooting*
+
+Run `:checkhealth nyan`. It reports whether your terminal supports the Kitty
+Graphics Protocol, whether you’re inside tmux (and the `allow-passthrough`
+setting graphics need there), and whether the sprite assets are present —
+which covers most "the cat isn’t showing" cases.
 
 
 CREDITS                                               *nyan-nyan.nvim-credits*

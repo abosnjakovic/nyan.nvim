@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.1.0](https://github.com/abosnjakovic/nyan.nvim/compare/v1.0.1...v1.1.0) (2026-07-06)
+
+### Features
+
+* add :checkhealth nyan for graphics diagnostics ([36a0d32](https://github.com/abosnjakovic/nyan.nvim/commit/36a0d32))
+
+### Tests
+
+* add Kitty graphics wire-protocol e2e harness ([0a1f18d](https://github.com/abosnjakovic/nyan.nvim/commit/0a1f18d))
+
+### Continuous Integration
+
+* replace release-please with workflow_dispatch release (#9) ([1d38338](https://github.com/abosnjakovic/nyan.nvim/commit/1d38338))
+* unify release flow into single workflow (#7) ([8355ccc](https://github.com/abosnjakovic/nyan.nvim/commit/8355ccc))
+
 ## [1.0.1](https://github.com/abosnjakovic/nyan.nvim/compare/v1.0.0...v1.0.1) (2026-05-11)
 
 
