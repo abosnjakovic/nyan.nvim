@@ -193,3 +193,75 @@ describe("search command-line wiring", function()
     vim.api.nvim_buf_delete(buf, { force = true })
   end)
 end)
+
+describe("setup wiring", function()
+  it("bails out and notifies on Neovim older than 0.10", function()
+    local orig_has = vim.fn.has
+    local orig_notify = vim.notify
+    local notified
+
+    vim.fn.has = function(feature)
+      if feature == "nvim-0.10" then
+        return 0
+      end
+      return orig_has(feature)
+    end
+    vim.notify = function(msg, level)
+      notified = { msg = msg, level = level }
+    end
+
+    require("nyan").setup({ renderer = "space" })
+
+    vim.fn.has = orig_has
+    vim.notify = orig_notify
+
+    assert.is_truthy(notified)
+    assert.equals("nyan.nvim requires Neovim 0.10 or later", notified.msg)
+    assert.equals(vim.log.levels.ERROR, notified.level)
+  end)
+
+  it("registers the three user commands", function()
+    require("nyan").setup({ renderer = "space" })
+    local commands = vim.api.nvim_get_commands({})
+
+    assert.is_truthy(commands.NyanStart)
+    assert.is_truthy(commands.NyanStop)
+    assert.is_truthy(commands.NyanToggle)
+  end)
+
+  it("wires diagnostic and git autocommands for the space renderer", function()
+    require("nyan").setup({ renderer = "space" })
+
+    local diag = vim.api.nvim_get_autocmds({ group = "NyanNvim", event = "DiagnosticChanged" })
+    local write = vim.api.nvim_get_autocmds({ group = "NyanNvim", event = "BufWritePost" })
+    assert.is_true(#diag > 0)
+    assert.is_true(#write > 0)
+  end)
+
+  it("wires focus and exit autocommands for the nyan renderer", function()
+    -- The nyan branch calls load_sprites(), which transmits real PNGs to stdout
+    -- when kitty.is_supported() is true. Neutralise the terminal detection so
+    -- the test does not spray graphics escape sequences into the test output
+    -- for anyone running the suite inside Kitty or Ghostty.
+    local saved = { vim.env.TERM, vim.env.TERM_PROGRAM, vim.env.KITTY_WINDOW_ID }
+    vim.env.TERM = "dumb"
+    vim.env.TERM_PROGRAM = ""
+    vim.env.KITTY_WINDOW_ID = nil
+
+    require("nyan").setup({ renderer = "nyan", animation = { enabled = false } })
+
+    vim.env.TERM, vim.env.TERM_PROGRAM, vim.env.KITTY_WINDOW_ID = saved[1], saved[2], saved[3]
+
+    local leave = vim.api.nvim_get_autocmds({ group = "NyanNvim", event = "VimLeavePre" })
+    local diag = vim.api.nvim_get_autocmds({ group = "NyanNvim", event = "DiagnosticChanged" })
+    assert.is_true(#leave > 0)
+    -- The nyan branch must not install the space renderer's autocommands.
+    assert.equals(0, #diag)
+  end)
+
+  it("always wires the ColorScheme autocommand", function()
+    require("nyan").setup({ renderer = "space" })
+    local cs = vim.api.nvim_get_autocmds({ group = "NyanNvim", event = "ColorScheme" })
+    assert.is_true(#cs > 0)
+  end)
+end)

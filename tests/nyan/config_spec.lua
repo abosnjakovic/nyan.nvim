@@ -85,10 +85,49 @@ describe("config", function()
   end)
 
   describe("log", function()
+    local notifications
+    local orig_notify
+
+    before_each(function()
+      notifications = {}
+      orig_notify = vim.notify
+      vim.notify = function(msg, level)
+        table.insert(notifications, { msg = msg, level = level })
+      end
+    end)
+
+    after_each(function()
+      vim.notify = orig_notify
+    end)
+
     it("does nothing when debug is false", function()
       config.setup({ debug = false })
-      -- Should not throw
       config.log("test message")
+      assert.equals(0, #notifications)
+    end)
+
+    it("notifies with a prefix when debug is true", function()
+      config.setup({ debug = true })
+      config.log("hello")
+
+      assert.equals(1, #notifications)
+      assert.equals("[nyan.nvim] hello", notifications[1].msg)
+      assert.equals(vim.log.levels.DEBUG, notifications[1].level)
+    end)
+
+    it("appends inspected values when extra arguments are given", function()
+      config.setup({ debug = true })
+      config.log("count:", 42)
+
+      assert.equals(1, #notifications)
+      assert.equals("[nyan.nvim] count: 42", notifications[1].msg)
+    end)
+
+    it("inspects table arguments", function()
+      config.setup({ debug = true })
+      config.log("cfg:", { a = 1 })
+
+      assert.is_truthy(notifications[1].msg:find("a = 1", 1, true))
     end)
   end)
 end)
