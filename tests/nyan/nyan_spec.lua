@@ -92,3 +92,104 @@ describe("space renderer integration", function()
     assert.is_not.same({}, hl)
   end)
 end)
+
+describe("search command-line wiring", function()
+  local orig_getcmdtype, orig_getcmdline
+
+  before_each(function()
+    orig_getcmdtype = vim.fn.getcmdtype
+    orig_getcmdline = vim.fn.getcmdline
+    require("nyan.providers.search").clear_live()
+  end)
+
+  after_each(function()
+    vim.fn.getcmdtype = orig_getcmdtype
+    vim.fn.getcmdline = orig_getcmdline
+    require("nyan.providers.search").clear_live()
+  end)
+
+  it("registers cmdline autocommands for the space renderer", function()
+    require("nyan").setup({ renderer = "space" })
+
+    local changed = vim.api.nvim_get_autocmds({ group = "NyanNvim", event = "CmdlineChanged" })
+    local left = vim.api.nvim_get_autocmds({ group = "NyanNvim", event = "CmdlineLeave" })
+    assert.is_true(#changed > 0)
+    assert.is_true(#left > 0)
+  end)
+
+  it("registers no cmdline autocommands when search is disabled", function()
+    require("nyan").setup({ renderer = "space", search = false })
+
+    local changed = vim.api.nvim_get_autocmds({ group = "NyanNvim", event = "CmdlineChanged" })
+    assert.equals(0, #changed)
+  end)
+
+  it("pushes the typed pattern into the provider while searching", function()
+    require("nyan").setup({ renderer = "space" })
+    local search = require("nyan.providers.search")
+    search.invalidate_all()
+
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_set_current_buf(buf)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "alpha", "needle", "gamma" })
+
+    vim.fn.getcmdtype = function()
+      return "/"
+    end
+    vim.fn.getcmdline = function()
+      return "needle"
+    end
+    vim.api.nvim_exec_autocmds("CmdlineChanged", { group = "NyanNvim" })
+
+    local result = search.get(buf)
+    assert.equals(1, #result)
+    assert.equals(2, result[1].line)
+
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+
+  it("ignores non-search command lines", function()
+    require("nyan").setup({ renderer = "space" })
+    local search = require("nyan.providers.search")
+    search.invalidate_all()
+    vim.o.hlsearch = true
+    vim.v.hlsearch = 0
+
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_set_current_buf(buf)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "alpha", "needle", "gamma" })
+
+    vim.fn.getcmdtype = function()
+      return ":"
+    end
+    vim.fn.getcmdline = function()
+      return "needle"
+    end
+    vim.api.nvim_exec_autocmds("CmdlineChanged", { group = "NyanNvim" })
+
+    -- No live pattern was set, and hlsearch is off, so nothing is marked.
+    assert.same({}, search.get(buf))
+
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+
+  it("clears the live pattern when the command line closes", function()
+    require("nyan").setup({ renderer = "space" })
+    local search = require("nyan.providers.search")
+    search.invalidate_all()
+    vim.o.hlsearch = true
+    vim.v.hlsearch = 0
+
+    local buf = vim.api.nvim_create_buf(false, true)
+    vim.api.nvim_set_current_buf(buf)
+    vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "alpha", "needle", "gamma" })
+
+    search.set_live("needle")
+    assert.equals(1, #search.get(buf))
+
+    vim.api.nvim_exec_autocmds("CmdlineLeave", { group = "NyanNvim" })
+    assert.same({}, search.get(buf))
+
+    vim.api.nvim_buf_delete(buf, { force = true })
+  end)
+end)

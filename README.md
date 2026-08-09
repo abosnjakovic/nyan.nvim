@@ -10,7 +10,9 @@ A Neovim statusline component with two rendering modes: a space-themed scroll mi
 [ · │ · ✕ · ▷ · · · ✕ · · │ · · · · · ]
 ```
 
-The space theme turns your statusline into a minimap of the current buffer. The ship `▷` shows your cursor position, diagnostic markers `✕` show LSP errors/warnings at their proportional file location, and git change markers `│` show where hunks are. Colours distinguish severity and change type — you get a spatial overview of your file's health without leaving your code.
+The space theme turns your statusline into a minimap of the current buffer. The ship `▷` shows your cursor position, diagnostic markers `✕` show LSP errors/warnings at their proportional file location, git change markers `│` show where hunks are, and search markers `◆` show where the current search pattern hits. Colours distinguish severity and change type — you get a spatial overview of your file's health without leaving your code.
+
+Search markers update live as you type in `/` or `?`, so you can see where a pattern lands before committing to it, and they clear with `:noh`.
 
 Git markers work with gitsigns (instant, in-memory) or fall back to `git diff` (no extra plugins required). Diagnostic markers use Neovim's built-in `vim.diagnostic` API.
 
@@ -69,6 +71,7 @@ require("nyan").setup({
   renderer = "space",          -- "space" (minimap) or "nyan" (classic cat)
   width = 45,                  -- Total component width in cells
   min_buffer_lines = 10,       -- Hide in tiny buffers
+  search = true,               -- Show search-hit markers (space renderer)
   debug = false,               -- Enable debug logging
 
   -- Nyan renderer only:
@@ -91,6 +94,7 @@ The space theme links to your existing colourscheme highlight groups by default:
 | `NyanShip` | — (bright white) | Ship indicator `▷` |
 | `NyanTrail` | `Comment` | Trail dots `·` |
 | `NyanBracket` | `Comment` | Brackets `[ ]` |
+| `NyanSearch` | `Search` | Search hits `◆` |
 | `NyanDiagError` | `DiagnosticError` | Error markers `✕` |
 | `NyanDiagWarn` | `DiagnosticWarn` | Warning markers `✕` |
 | `NyanDiagInfo` | `DiagnosticInfo` | Info markers `✕` |

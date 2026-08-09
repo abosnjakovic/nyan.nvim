@@ -58,6 +58,17 @@ local function setup_highlights()
   end
 end
 
+--- Repaint the statusline, including while the command line is open.
+--- A plain `redrawstatus` does not repaint during command-line editing, which
+--- is exactly when live search markers need to appear.
+local function redraw_statusline()
+  if vim.api.nvim__redraw then
+    vim.api.nvim__redraw({ statusline = true })
+  else
+    vim.cmd("redraw")
+  end
+end
+
 --- Setup autocommands
 local function setup_autocommands()
   local augroup = vim.api.nvim_create_augroup("NyanNvim", { clear = true })
@@ -120,6 +131,32 @@ local function setup_autocommands()
         vim.cmd("redrawstatus")
       end,
     })
+
+    if cfg.search then
+      local search_provider = require("nyan.providers.search")
+
+      -- Live-update markers as the search pattern is typed. getcmdline() is
+      -- only meaningful while the command line is open, so the value is pushed
+      -- into the provider here rather than pulled during statusline redraws.
+      vim.api.nvim_create_autocmd("CmdlineChanged", {
+        group = augroup,
+        callback = function()
+          local cmdtype = vim.fn.getcmdtype()
+          if cmdtype == "/" or cmdtype == "?" then
+            search_provider.set_live(vim.fn.getcmdline())
+            redraw_statusline()
+          end
+        end,
+      })
+
+      vim.api.nvim_create_autocmd("CmdlineLeave", {
+        group = augroup,
+        callback = function()
+          search_provider.clear_live()
+          redraw_statusline()
+        end,
+      })
+    end
   end
 end
 
