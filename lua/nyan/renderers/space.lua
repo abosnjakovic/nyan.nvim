@@ -11,7 +11,7 @@ local SHIP = "▷"
 local DIAG = "✕"
 local GIT = "│"
 local TRAIL = "·"
-local SEARCH = "✦"
+local SEARCH = "/"
 local BRACKET_L = "["
 local BRACKET_R = "]"
 

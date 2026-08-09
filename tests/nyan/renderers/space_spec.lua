@@ -163,14 +163,14 @@ describe("renderers.space", function()
       search.set_live("needle")
 
       local result = space.render()
-      assert.is_truthy(result:find("✦"))
+      assert.is_truthy(result:find("/"))
     end)
 
     it("renders no search marker when nothing matches", function()
       search.set_live("nosuchtext")
 
       local result = space.render()
-      assert.is_nil(result:find("✦"))
+      assert.is_nil(result:find("/"))
     end)
 
     it("search beats an error diagnostic in the same cell", function()
@@ -182,7 +182,7 @@ describe("renderers.space", function()
       })
 
       local result = space.render()
-      assert.is_truthy(result:find("✦"))
+      assert.is_truthy(result:find("/"))
       assert.is_nil(result:find("✕"))
     end)
 
@@ -202,7 +202,7 @@ describe("renderers.space", function()
       search.set_live("needle")
 
       local result = space.render()
-      assert.is_nil(result:find("✦"))
+      assert.is_nil(result:find("/"))
     end)
   end)
 
