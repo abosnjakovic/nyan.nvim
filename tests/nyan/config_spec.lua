@@ -42,6 +42,10 @@ describe("config", function()
     it("has space renderer by default", function()
       assert.equals("space", config.get().renderer)
     end)
+
+    it("has search markers enabled by default", function()
+      assert.is_true(config.get().search)
+    end)
   end)
 
   describe("setup", function()

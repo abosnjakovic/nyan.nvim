@@ -1,5 +1,6 @@
 local space = require("nyan.renderers.space")
 local config = require("nyan.config")
+local search = require("nyan.providers.search")
 
 describe("renderers.space", function()
   local buf
@@ -137,6 +138,79 @@ describe("renderers.space", function()
       local new = { char = "│", hl = "NyanGitAdded", priority = 3 }
       space.place_marker(markers, 5, new)
       assert.equals("NyanDiagError", markers[5].hl)
+    end)
+  end)
+
+  describe("search markers", function()
+    before_each(function()
+      search.clear_live()
+      search.invalidate_all()
+      vim.o.hlsearch = true
+      vim.o.ignorecase = false
+      vim.o.smartcase = false
+      vim.v.hlsearch = 0
+      vim.fn.setreg("/", "")
+    end)
+
+    after_each(function()
+      search.clear_live()
+      search.invalidate_all()
+    end)
+
+    it("renders a search marker for a matching line", function()
+      -- Line 50 is well away from the ship at line 1 / cell 0.
+      vim.api.nvim_buf_set_lines(buf, 49, 50, false, { "needle" })
+      search.set_live("needle")
+
+      local result = space.render()
+      assert.is_truthy(result:find("◆"))
+    end)
+
+    it("renders no search marker when nothing matches", function()
+      search.set_live("nosuchtext")
+
+      local result = space.render()
+      assert.is_nil(result:find("◆"))
+    end)
+
+    it("search beats an error diagnostic in the same cell", function()
+      vim.api.nvim_buf_set_lines(buf, 49, 50, false, { "needle" })
+      search.set_live("needle")
+      local ns = vim.api.nvim_create_namespace("test_search_priority")
+      vim.diagnostic.set(ns, buf, {
+        { lnum = 49, col = 0, message = "err", severity = vim.diagnostic.severity.ERROR },
+      })
+
+      local result = space.render()
+      assert.is_truthy(result:find("◆"))
+      assert.is_nil(result:find("✕"))
+    end)
+
+    it("ship still beats a search marker in the same cell", function()
+      vim.api.nvim_win_set_cursor(0, { 1, 0 })
+      vim.api.nvim_buf_set_lines(buf, 0, 1, false, { "needle" })
+      search.set_live("needle")
+
+      local result = space.render()
+      local plain = result:gsub("%%#[^#]+#", ""):gsub("%%*", "")
+      assert.equals("▷", plain:sub(2, 4)) -- ▷ is multi-byte
+    end)
+
+    it("renders no search marker when search is disabled", function()
+      config.setup({ renderer = "space", width = 22, search = false })
+      vim.api.nvim_buf_set_lines(buf, 49, 50, false, { "needle" })
+      search.set_live("needle")
+
+      local result = space.render()
+      assert.is_nil(result:find("◆"))
+    end)
+  end)
+
+  describe("setup_highlights", function()
+    it("defines NyanSearch", function()
+      space.setup_highlights()
+      local hl = vim.api.nvim_get_hl(0, { name = "NyanSearch" })
+      assert.is_not.same({}, hl)
     end)
   end)
 end)

@@ -10,6 +10,7 @@
 ---@field fallback "ascii"|"none" Fallback mode if graphics not supported
 ---@field theme "classic"|"dark" Rainbow colour palette
 ---@field transparent boolean Force transparent background on highlights
+---@field search boolean Show search-hit markers on the space minimap
 ---@field debug boolean Enable debug logging
 
 local M = {}
@@ -26,6 +27,7 @@ M.defaults = {
   fallback = "ascii",
   theme = "classic",
   transparent = false,
+  search = true,
   debug = false,
 }
 

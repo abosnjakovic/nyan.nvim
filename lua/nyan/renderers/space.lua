@@ -2,6 +2,7 @@ local config = require("nyan.config")
 local position = require("nyan.position")
 local diagnostics_provider = require("nyan.providers.diagnostics")
 local git_provider = require("nyan.providers.git")
+local search_provider = require("nyan.providers.search")
 
 local M = {}
 
@@ -10,11 +11,13 @@ local SHIP = "▷"
 local DIAG = "✕"
 local GIT = "│"
 local TRAIL = "·"
+local SEARCH = "◆"
 local BRACKET_L = "["
 local BRACKET_R = "]"
 
 -- Priority values (lower = higher priority)
 local PRIORITY = {
+  SEARCH = 0,
   [vim.diagnostic.severity.ERROR] = 1,
   [vim.diagnostic.severity.WARN] = 2,
   GIT = 3,
@@ -65,6 +68,7 @@ M.setup_highlights = function()
   vim.api.nvim_set_hl(0, "NyanShip", { fg = "#ffffff", bold = true, default = true })
   vim.api.nvim_set_hl(0, "NyanTrail", { link = "Comment", default = true })
   vim.api.nvim_set_hl(0, "NyanBracket", { link = "Comment", default = true })
+  vim.api.nvim_set_hl(0, "NyanSearch", { link = "Search", default = true })
   vim.api.nvim_set_hl(0, "NyanDiagError", { link = "DiagnosticError", default = true })
   vim.api.nvim_set_hl(0, "NyanDiagWarn", { link = "DiagnosticWarn", default = true })
   vim.api.nvim_set_hl(0, "NyanDiagInfo", { link = "DiagnosticInfo", default = true })
@@ -118,6 +122,18 @@ M.render = function()
       hl = hl,
       priority = PRIORITY.GIT,
     })
+  end
+
+  -- Search hits
+  if cfg.search then
+    for _, s in ipairs(search_provider.get(bufnr)) do
+      local cell = M.map_to_cell(s.line, total_lines, available_width)
+      M.place_marker(markers, cell, {
+        char = SEARCH,
+        hl = "NyanSearch",
+        priority = PRIORITY.SEARCH,
+      })
+    end
   end
 
   -- Build output
