@@ -163,14 +163,14 @@ describe("renderers.space", function()
       search.set_live("needle")
 
       local result = space.render()
-      assert.is_truthy(result:find("◆"))
+      assert.is_truthy(result:find("✦"))
     end)
 
     it("renders no search marker when nothing matches", function()
       search.set_live("nosuchtext")
 
       local result = space.render()
-      assert.is_nil(result:find("◆"))
+      assert.is_nil(result:find("✦"))
     end)
 
     it("search beats an error diagnostic in the same cell", function()
@@ -182,7 +182,7 @@ describe("renderers.space", function()
       })
 
       local result = space.render()
-      assert.is_truthy(result:find("◆"))
+      assert.is_truthy(result:find("✦"))
       assert.is_nil(result:find("✕"))
     end)
 
@@ -202,7 +202,7 @@ describe("renderers.space", function()
       search.set_live("needle")
 
       local result = space.render()
-      assert.is_nil(result:find("◆"))
+      assert.is_nil(result:find("✦"))
     end)
   end)
 
@@ -211,6 +211,30 @@ describe("renderers.space", function()
       space.setup_highlights()
       local hl = vim.api.nvim_get_hl(0, { name = "NyanSearch" })
       assert.is_not.same({}, hl)
+    end)
+
+    it("gives NyanSearch no background", function()
+      -- Linking to Search would inherit its background and render every hit as
+      -- a filled block, which swamps the minimap. Foreground only.
+      space.setup_highlights()
+      local hl = vim.api.nvim_get_hl(0, { name = "NyanSearch" })
+      assert.is_nil(hl.bg)
+    end)
+
+    it("takes NyanSearch's foreground from the Search highlight", function()
+      local orig_search = vim.api.nvim_get_hl(0, { name = "Search", link = false })
+      -- setup_highlights uses `default = true`, which never overwrites a group
+      -- that already exists. Clear it first so the derivation can be observed.
+      -- Real colourscheme switches clear it for us: `:colorscheme` runs
+      -- `hi clear`, then the ColorScheme autocommand re-derives.
+      vim.cmd("highlight clear NyanSearch")
+      vim.api.nvim_set_hl(0, "Search", { fg = 0x000000, bg = 0xabcdef })
+
+      space.setup_highlights()
+      local hl = vim.api.nvim_get_hl(0, { name = "NyanSearch" })
+
+      vim.api.nvim_set_hl(0, "Search", orig_search)
+      assert.equals(0xabcdef, hl.fg)
     end)
   end)
 end)

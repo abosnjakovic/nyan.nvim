@@ -11,7 +11,7 @@ local SHIP = "▷"
 local DIAG = "✕"
 local GIT = "│"
 local TRAIL = "·"
-local SEARCH = "◆"
+local SEARCH = "✦"
 local BRACKET_L = "["
 local BRACKET_R = "]"
 
@@ -68,7 +68,12 @@ M.setup_highlights = function()
   vim.api.nvim_set_hl(0, "NyanShip", { fg = "#ffffff", bold = true, default = true })
   vim.api.nvim_set_hl(0, "NyanTrail", { link = "Comment", default = true })
   vim.api.nvim_set_hl(0, "NyanBracket", { link = "Comment", default = true })
-  vim.api.nvim_set_hl(0, "NyanSearch", { link = "Search", default = true })
+  -- Search hits borrow the colourscheme's search colour as a *foreground*.
+  -- Linking to Search would drag in its background too, turning every hit into
+  -- a filled block that dominates the bar. Search.bg is the accent colour in
+  -- practice; fg is the readable-text colour picked to sit on top of it.
+  local search_hl = vim.api.nvim_get_hl(0, { name = "Search", link = false })
+  vim.api.nvim_set_hl(0, "NyanSearch", { fg = search_hl.bg or search_hl.fg, bold = true, default = true })
   vim.api.nvim_set_hl(0, "NyanDiagError", { link = "DiagnosticError", default = true })
   vim.api.nvim_set_hl(0, "NyanDiagWarn", { link = "DiagnosticWarn", default = true })
   vim.api.nvim_set_hl(0, "NyanDiagInfo", { link = "DiagnosticInfo", default = true })

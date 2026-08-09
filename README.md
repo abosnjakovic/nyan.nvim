@@ -10,7 +10,7 @@ A Neovim statusline component with two rendering modes: a space-themed scroll mi
 [ · │ · ✕ · ▷ · · · ✕ · · │ · · · · · ]
 ```
 
-The space theme turns your statusline into a minimap of the current buffer. The ship `▷` shows your cursor position, diagnostic markers `✕` show LSP errors/warnings at their proportional file location, git change markers `│` show where hunks are, and search markers `◆` show where the current search pattern hits. Colours distinguish severity and change type — you get a spatial overview of your file's health without leaving your code.
+The space theme turns your statusline into a minimap of the current buffer. The ship `▷` shows your cursor position, diagnostic markers `✕` show LSP errors/warnings at their proportional file location, git change markers `│` show where hunks are, and search markers `✦` show where the current search pattern hits. Colours distinguish severity and change type — you get a spatial overview of your file's health without leaving your code.
 
 Search markers update live as you type in `/` or `?`, so you can see where a pattern lands before committing to it, and they clear with `:noh`.
 
@@ -94,7 +94,7 @@ The space theme links to your existing colourscheme highlight groups by default:
 | `NyanShip` | — (bright white) | Ship indicator `▷` |
 | `NyanTrail` | `Comment` | Trail dots `·` |
 | `NyanBracket` | `Comment` | Brackets `[ ]` |
-| `NyanSearch` | `Search` | Search hits `◆` |
+| `NyanSearch` | `Search`'s colour, as foreground | Search hits `✦` |
 | `NyanDiagError` | `DiagnosticError` | Error markers `✕` |
 | `NyanDiagWarn` | `DiagnosticWarn` | Warning markers `✕` |
 | `NyanDiagInfo` | `DiagnosticInfo` | Info markers `✕` |
