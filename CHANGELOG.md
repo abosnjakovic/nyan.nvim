@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.2.0](https://github.com/abosnjakovic/nyan.nvim/compare/v1.1.1...v1.2.0) (2026-08-09)
+
+### Features
+
+* use a slash for search hit markers ([d2f38f6](https://github.com/abosnjakovic/nyan.nvim/commit/d2f38f6))
+* use a foreground-only star for search hits ([8e03722](https://github.com/abosnjakovic/nyan.nvim/commit/8e03722))
+* update search markers live while typing a pattern ([10f1b06](https://github.com/abosnjakovic/nyan.nvim/commit/10f1b06))
+* draw search hits as top-priority minimap markers ([e6ed7fe](https://github.com/abosnjakovic/nyan.nvim/commit/e6ed7fe))
+* add search-hit provider for the space minimap ([f0ff68b](https://github.com/abosnjakovic/nyan.nvim/commit/f0ff68b))
+
+### Tests
+
+* cover config logging and setup wiring branches ([1d22796](https://github.com/abosnjakovic/nyan.nvim/commit/1d22796))
+
+### Documentation
+
+* implementation plan for search-hit markers ([973d629](https://github.com/abosnjakovic/nyan.nvim/commit/973d629))
+* design spec for search-hit markers on the space minimap ([03a6a5d](https://github.com/abosnjakovic/nyan.nvim/commit/03a6a5d))
+
 ## [1.1.1](https://github.com/abosnjakovic/nyan.nvim/compare/v1.1.0...v1.1.1) (2026-07-06)
 
 ### Bug Fixes
