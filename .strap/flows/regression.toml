@@ -1,0 +1,26 @@
+# nyan.nvim regression flow: lint + plenary suite; on red, an agent gets the
+# failure plus relevant lessons and must make `make lint && make test` pass.
+
+[[step]]
+name = "lint"
+kind = "run"
+cmd = "make lint"
+on_fail = "fix"
+
+[[step]]
+name = "test"
+kind = "run"
+cmd = "make test"
+on_fail = "fix"
+
+[[step]]
+name = "fix"
+kind = "agent"
+agent = "claude"
+cmd = "claude -p --allowedTools 'Edit Read Glob Grep Bash' --max-turns 25"
+tags = ["regression", "lua", "nvim"]
+verify = "make lint && make test"
+timeout_secs = 900
+
+[trigger]
+on = ["manual", "agent-finished"]
