@@ -5,3 +5,4 @@ scripts/.env
 luacov.stats.out
 luacov.report.out
 .luacov.stats.*.out
+.serena/
