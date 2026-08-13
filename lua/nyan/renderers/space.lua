@@ -85,6 +85,8 @@ M.setup_highlights = function()
 end
 
 --- Build the statusline string
+--- Reads the current buffer/cursor — call only from active-window statusline
+--- content (see nyan.position).
 ---@return string Statusline-compatible string
 M.render = function()
   local cfg = config.get()

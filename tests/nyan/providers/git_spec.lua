@@ -6,6 +6,39 @@ describe("providers.git", function()
     assert.is_table(result)
   end)
 
+  it("caches the miss for non-git files instead of shelling out per call", function()
+    -- Force the git-diff fallback path
+    package.loaded["gitsigns"] = nil
+    package.preload["gitsigns"] = function()
+      error("gitsigns disabled for this test")
+    end
+
+    local buf = vim.api.nvim_create_buf(false, false)
+    vim.api.nvim_buf_set_name(buf, vim.fn.tempname() .. ".txt")
+    git.invalidate(buf)
+
+    local count = 0
+    local orig = vim.fn.systemlist
+    vim.fn.systemlist = function(cmd, ...)
+      if type(cmd) == "string" and cmd:match("^git ") then
+        count = count + 1
+      end
+      return orig(cmd, ...)
+    end
+
+    git.get(buf)
+    local first = count
+    git.get(buf)
+    local second = count
+
+    vim.fn.systemlist = orig
+    package.preload["gitsigns"] = nil
+    vim.api.nvim_buf_delete(buf, { force = true })
+
+    assert.is_true(first >= 1)
+    assert.equals(first, second)
+  end)
+
   describe("hunk header parsing", function()
     it("parses an add hunk", function()
       local hunk = git._parse_hunk_header("@@ -10,0 +11,3 @@ some context")

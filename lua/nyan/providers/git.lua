@@ -53,6 +53,10 @@ local function get_from_git_diff(bufnr)
   local dir = vim.fn.fnamemodify(filepath, ":h")
   local git_root = vim.fn.systemlist("git -C " .. vim.fn.shellescape(dir) .. " rev-parse --show-toplevel")
   if vim.v.shell_error ~= 0 or #git_root == 0 then
+    -- Cache the miss too: without this, every statusline redraw of a non-git
+    -- buffer shells out to `git rev-parse` again. Invalidation autocmds
+    -- (write/enter/focus) still clear it, so repo-init is picked up.
+    cache[bufnr] = { filepath = filepath, result = {} }
     return {}
   end
 
