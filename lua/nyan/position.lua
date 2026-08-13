@@ -1,3 +1,9 @@
+--- Scroll-position helpers.
+---
+--- These read the *current* window (`line(".")`, `line("$")`), so statusline
+--- integrations must only call them from active-window content — as
+--- mini.statusline does. Wired into an inactive statusline they would show
+--- the active window's position in every window.
 local M = {}
 
 --- Calculate scroll percentage (0.0 to 1.0)
