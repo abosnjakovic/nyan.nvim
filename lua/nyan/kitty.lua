@@ -77,20 +77,7 @@ end
 ---@param data string Binary data to encode
 ---@return string Base64 encoded string
 M.base64_encode = function(data)
-  -- Use vim's built-in base64 if available (Neovim 0.10+)
-  if vim.base64 then
-    return vim.base64.encode(data)
-  end
-
-  -- Fallback: shell out to base64 command
-  local handle = io.popen("echo -n '" .. data:gsub("'", "'\\''") .. "' | base64 | tr -d '\\n'")
-  if handle then
-    local result = handle:read("*a")
-    handle:close()
-    return result
-  end
-
-  return ""
+  return vim.base64.encode(data)
 end
 
 --- Read file contents
