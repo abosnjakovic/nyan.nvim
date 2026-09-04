@@ -6,7 +6,7 @@ describe("providers.git", function()
     assert.is_table(result)
   end)
 
-  it("caches the miss for non-git files instead of shelling out per call", function()
+  it("caches the miss for non-git files instead of shelling out per redraw", function()
     -- Force the git-diff fallback path
     package.loaded["gitsigns"] = nil
     package.preload["gitsigns"] = function()
@@ -18,25 +18,39 @@ describe("providers.git", function()
     git.invalidate(buf)
 
     local count = 0
-    local orig = vim.fn.systemlist
-    vim.fn.systemlist = function(cmd, ...)
-      if type(cmd) == "string" and cmd:match("^git ") then
+    local orig = vim.system
+    vim.system = function(cmd, opts, cb)
+      if type(cmd) == "table" and cmd[1] == "git" then
         count = count + 1
       end
-      return orig(cmd, ...)
+      return orig(cmd, opts, cb)
     end
 
-    git.get(buf)
-    local first = count
-    git.get(buf)
-    local second = count
+    -- A burst of statusline redraws before the first diff lands must not queue
+    -- a spawn each: the in-flight guard collapses them into one.
+    for _ = 1, 10 do
+      git.get(buf)
+    end
+    local during_flight = count
 
-    vim.fn.systemlist = orig
+    -- A cached result is returned by identity; an uncached path builds a fresh
+    -- empty table every call. Same table twice means the miss is now cached.
+    local settled = vim.wait(5000, function()
+      return git.get(buf) == git.get(buf)
+    end, 10)
+
+    for _ = 1, 10 do
+      git.get(buf)
+    end
+    local after_settle = count
+
+    vim.system = orig
     package.preload["gitsigns"] = nil
     vim.api.nvim_buf_delete(buf, { force = true })
 
-    assert.is_true(first >= 1)
-    assert.equals(first, second)
+    assert.equals(1, during_flight)
+    assert.is_true(settled)
+    assert.equals(1, after_settle)
   end)
 
   describe("hunk header parsing", function()
@@ -129,7 +143,7 @@ describe("providers.git", function()
   end)
 
   describe("cache", function()
-    it("invalidate clears cache for buffer", function()
+    it("invalidate and invalidate_all do not error", function()
       -- Should not error
       git.invalidate(0)
       git.invalidate_all()
@@ -166,6 +180,27 @@ local function open_buf(path)
   return vim.api.nvim_get_current_buf()
 end
 
+--- git.get() never blocks, so poll it until the background diff lands
+---@param buf number
+---@return { line: number, type: string, staged: boolean }[]
+local function await_markers(buf)
+  local result = {}
+  vim.wait(10000, function()
+    result = git.get(buf)
+    return #result > 0
+  end, 10)
+  return result
+end
+
+--- Poll until git.get() serves a cached table rather than a fresh empty one
+---@param buf number
+---@return boolean settled
+local function await_settled(buf)
+  return vim.wait(10000, function()
+    return git.get(buf) == git.get(buf)
+  end, 10)
+end
+
 describe("providers.git (git diff path)", function()
   local repo
   local cleanup = {}
@@ -198,8 +233,22 @@ describe("providers.git (git diff path)", function()
     local path = vim.fn.tempname()
     write_file(path, "no repo here\n")
     local buf = open_buf(path)
+    assert.is_true(await_settled(buf))
     assert.same({}, git.get(buf))
     os.remove(path)
+  end)
+
+  it("returns markers only after the background diff lands", function()
+    local path = repo .. "/file.txt"
+    write_file(path, "a\nb\nc\n")
+    git_run(repo, "add", "file.txt")
+    git_run(repo, "commit", "-q", "-m", "init")
+    write_file(path, "a\nb\nc\nd\n")
+
+    local buf = open_buf(path)
+    -- The statusline must get an answer without waiting on three git spawns
+    assert.same({}, git.get(buf))
+    assert.is_true(#await_markers(buf) >= 1)
   end)
 
   it("detects an unstaged addition", function()
@@ -210,7 +259,7 @@ describe("providers.git (git diff path)", function()
     write_file(path, "line1\nline2\nline3\nline4\nline5\n")
 
     local buf = open_buf(path)
-    local result = git.get(buf)
+    local result = await_markers(buf)
     assert.is_true(#result >= 1)
     assert.equals("add", result[1].type)
     assert.is_false(result[1].staged)
@@ -224,7 +273,7 @@ describe("providers.git (git diff path)", function()
     write_file(path, "a\nB\nc\n")
 
     local buf = open_buf(path)
-    local result = git.get(buf)
+    local result = await_markers(buf)
     assert.is_true(#result >= 1)
     assert.equals("change", result[1].type)
   end)
@@ -239,7 +288,7 @@ describe("providers.git (git diff path)", function()
     git_run(repo, "add", "file.txt")
 
     local buf = open_buf(path)
-    local result = git.get(buf)
+    local result = await_markers(buf)
     assert.is_true(#result >= 1)
     local found_staged = false
     for _, r in ipairs(result) do
@@ -258,15 +307,21 @@ describe("providers.git (git diff path)", function()
     write_file(path, "a\nb\n")
 
     local buf = open_buf(path)
-    local first = git.get(buf)
-    -- Mutate on disk; cache should still return the original result
-    write_file(path, "a\n")
-    local second = git.get(buf)
-    assert.equals(#first, #second)
+    local first = await_markers(buf)
+    assert.is_true(#first >= 1)
 
+    -- Mutate on disk; the cache still answers, no re-spawn
+    write_file(path, "a\n")
+    assert.equals(#first, #git.get(buf))
+
+    -- Invalidation serves the stale markers while the refresh runs, so the
+    -- column does not blink empty on every write, then converges on the truth
     git.invalidate(buf)
-    local third = git.get(buf)
-    assert.equals(0, #third)
+    assert.equals(#first, #git.get(buf))
+    vim.wait(10000, function()
+      return #git.get(buf) == 0
+    end, 10)
+    assert.equals(0, #git.get(buf))
   end)
 end)
 

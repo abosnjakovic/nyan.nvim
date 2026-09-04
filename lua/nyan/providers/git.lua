@@ -1,7 +1,11 @@
 local M = {}
 
--- Cache for git diff results per buffer
+-- Completed results per buffer: bufnr -> { filepath, result }
 local cache = {}
+-- In-flight refreshes: bufnr -> token. Guards against the statusline
+-- spawning a fresh batch of git processes on every redraw.
+local pending = {}
+local next_token = 0
 
 --- Parse a git diff unified format hunk header
 --- Format: @@ -old_start[,old_count] +new_start[,new_count] @@
@@ -34,48 +38,11 @@ local function parse_hunk_header(header)
   return { line = line, type = hunk_type }
 end
 
---- Get git hunks by shelling out to git diff
----@param bufnr number Buffer number
+--- Merge unstaged and staged diff output into markers
+---@param diff_output string[] Lines of `git diff`
+---@param staged_output string[] Lines of `git diff --cached`
 ---@return { line: number, type: string, staged: boolean }[]
-local function get_from_git_diff(bufnr)
-  local filepath = vim.api.nvim_buf_get_name(bufnr)
-  if filepath == "" then
-    return {}
-  end
-
-  -- Check cache
-  local buf_cache = cache[bufnr]
-  if buf_cache and buf_cache.filepath == filepath then
-    return buf_cache.result
-  end
-
-  -- Get the git root for this file
-  local dir = vim.fn.fnamemodify(filepath, ":h")
-  local git_root = vim.fn.systemlist("git -C " .. vim.fn.shellescape(dir) .. " rev-parse --show-toplevel")
-  if vim.v.shell_error ~= 0 or #git_root == 0 then
-    -- Cache the miss too: without this, every statusline redraw of a non-git
-    -- buffer shells out to `git rev-parse` again. Invalidation autocmds
-    -- (write/enter/focus) still clear it, so repo-init is picked up.
-    cache[bufnr] = { filepath = filepath, result = {} }
-    return {}
-  end
-
-  -- Get unstaged diff
-  local diff_output = vim.fn.systemlist(
-    "git -C " .. vim.fn.shellescape(git_root[1]) .. " diff --unified=0 -- " .. vim.fn.shellescape(filepath)
-  )
-  if vim.v.shell_error ~= 0 then
-    diff_output = {}
-  end
-
-  -- Get staged diff
-  local staged_output = vim.fn.systemlist(
-    "git -C " .. vim.fn.shellescape(git_root[1]) .. " diff --unified=0 --cached -- " .. vim.fn.shellescape(filepath)
-  )
-  if vim.v.shell_error ~= 0 then
-    staged_output = {}
-  end
-
+local function build_markers(diff_output, staged_output)
   -- Parse staged lines into a set
   local staged_lines = {}
   for _, line in ipairs(staged_output) do
@@ -125,9 +92,78 @@ local function get_from_git_diff(bufnr)
     end
   end
 
-  -- Cache the result
-  cache[bufnr] = { filepath = filepath, result = result }
   return result
+end
+
+--- Store a finished refresh and repaint, unless it was superseded
+--- Runs on the main loop: vim.system callbacks land in a fast event context
+--- where the Nvim API is off limits.
+---@param bufnr number
+---@param token number Token this refresh was started with
+---@param filepath string
+---@param result { line: number, type: string, staged: boolean }[]
+local function finish(bufnr, token, filepath, result)
+  vim.schedule(function()
+    -- invalidate() drops the token, so a result that raced a write is discarded
+    -- rather than reinstating pre-write markers.
+    if pending[bufnr] ~= token then
+      return
+    end
+    pending[bufnr] = nil
+    cache[bufnr] = { filepath = filepath, result = result }
+    if vim.api.nvim_buf_is_valid(bufnr) then
+      vim.cmd("redrawstatus")
+    end
+  end)
+end
+
+--- Kick off a background `git diff` for a buffer
+---@param bufnr number
+---@param filepath string
+local function refresh(bufnr, filepath)
+  if pending[bufnr] then
+    return
+  end
+  next_token = next_token + 1
+  local token = next_token
+  pending[bufnr] = token
+
+  local dir = vim.fn.fnamemodify(filepath, ":h")
+
+  -- vim.system raises if git is missing; a throw here would break the
+  -- statusline that called us.
+  local ok = pcall(vim.system, { "git", "-C", dir, "rev-parse", "--show-toplevel" }, { text = true }, function(root)
+    local git_root = root.code == 0 and vim.trim(root.stdout or "") or ""
+    if git_root == "" then
+      -- Cache the miss too: without this, every statusline redraw of a non-git
+      -- buffer shells out to `git rev-parse` again. Invalidation autocmds
+      -- (write/enter/focus) still clear it, so repo-init is picked up.
+      return finish(bufnr, token, filepath, {})
+    end
+
+    local out = {}
+    local remaining = 2
+    local function collect(key)
+      return function(obj)
+        out[key] = obj.code == 0 and vim.split(obj.stdout or "", "\n") or {}
+        remaining = remaining - 1
+        if remaining == 0 then
+          finish(bufnr, token, filepath, build_markers(out.unstaged, out.staged))
+        end
+      end
+    end
+
+    vim.system({ "git", "-C", git_root, "diff", "--unified=0", "--", filepath }, { text = true }, collect("unstaged"))
+    vim.system(
+      { "git", "-C", git_root, "diff", "--unified=0", "--cached", "--", filepath },
+      { text = true },
+      collect("staged")
+    )
+  end)
+
+  if not ok then
+    finish(bufnr, token, filepath, {})
+  end
 end
 
 --- Get git hunks from gitsigns (fast path)
@@ -174,7 +210,10 @@ local function get_from_gitsigns(bufnr)
 end
 
 --- Get git change markers for a buffer
---- Uses gitsigns when available (fast, in-memory), falls back to git diff
+--- Uses gitsigns when available (fast, in-memory), otherwise returns the last
+--- cached `git diff` result and refreshes it in the background. Never blocks:
+--- the first call for a buffer returns an empty list and repaints when the
+--- diff lands.
 ---@param bufnr number Buffer number
 ---@return { line: number, type: string, staged: boolean }[]
 M.get = function(bufnr)
@@ -182,18 +221,38 @@ M.get = function(bufnr)
   if result then
     return result
   end
-  return get_from_git_diff(bufnr)
+
+  local filepath = vim.api.nvim_buf_get_name(bufnr)
+  if filepath == "" then
+    return {}
+  end
+
+  local buf_cache = cache[bufnr]
+  local for_this_file = buf_cache ~= nil and buf_cache.filepath == filepath
+  if not (for_this_file and not buf_cache.stale) then
+    refresh(bufnr, filepath)
+  end
+  -- Stale markers are served while the refresh runs, so a write does not blink
+  -- the whole column off and back on.
+  return for_this_file and buf_cache.result or {}
 end
 
---- Invalidate cache for a buffer
+--- Mark a buffer's cached diff stale, so the next get() refreshes it
 ---@param bufnr number Buffer number
 M.invalidate = function(bufnr)
-  cache[bufnr] = nil
+  local buf_cache = cache[bufnr]
+  if buf_cache then
+    buf_cache.stale = true
+  end
+  pending[bufnr] = nil
 end
 
---- Invalidate all cached data
+--- Mark every cached diff stale
 M.invalidate_all = function()
-  cache = {}
+  for _, buf_cache in pairs(cache) do
+    buf_cache.stale = true
+  end
+  pending = {}
 end
 
 --- Exposed for testing
