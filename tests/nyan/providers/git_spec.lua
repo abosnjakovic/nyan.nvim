@@ -87,12 +87,7 @@ describe("providers.git", function()
   describe("with mock gitsigns", function()
     before_each(function()
       package.loaded["gitsigns"] = {
-        get_hunks = function(bufnr, opts)
-          if opts and opts.staged then
-            return {
-              { added = { start = 20, count = 3 }, removed = { start = 0, count = 0 }, type = "add" },
-            }
-          end
+        get_hunks = function()
           return {
             { added = { start = 10, count = 5 }, removed = { start = 0, count = 0 }, type = "add" },
             { added = { start = 50, count = 0 }, removed = { start = 50, count = 3 }, type = "delete" },
@@ -118,27 +113,16 @@ describe("providers.git", function()
       assert.equals("change", result[3].type)
     end)
 
-    it("marks staged hunks when lines overlap", function()
-      package.loaded["gitsigns"] = {
-        get_hunks = function(bufnr, opts)
-          if opts and opts.staged then
-            return {
-              { added = { start = 10, count = 3 }, removed = { start = 0, count = 0 }, type = "add" },
-            }
-          end
-          return {
-            { added = { start = 10, count = 5 }, removed = { start = 0, count = 0 }, type = "add" },
-            { added = { start = 50, count = 0 }, removed = { start = 50, count = 3 }, type = "delete" },
-          }
-        end,
-      }
-
+    it("never marks gitsigns hunks staged", function()
+      -- gitsigns.get_hunks(bufnr) diffs the buffer against the index, so every
+      -- hunk it returns is unstaged. It takes no options: a { staged = true }
+      -- argument is ignored and returns these same hunks, which once coloured
+      -- every marker as staged.
       local result = git.get(0)
-      assert.equals(2, #result)
-      assert.equals(10, result[1].line)
-      assert.is_true(result[1].staged)
-      assert.equals(50, result[2].line)
-      assert.is_false(result[2].staged)
+      assert.equals(3, #result)
+      for _, r in ipairs(result) do
+        assert.is_false(r.staged)
+      end
     end)
   end)
 

@@ -99,7 +99,7 @@ The space theme links to your existing colourscheme highlight groups by default:
 | `NyanDiagWarn` | `DiagnosticWarn` | Warning markers `✕` |
 | `NyanDiagInfo` | `DiagnosticInfo` | Info markers `✕` |
 | `NyanDiagHint` | `DiagnosticHint` | Hint markers `✕` |
-| `NyanGitStaged` | `GitSignsAdd` | Staged changes `│` |
+| `NyanGitStaged` | `GitSignsAdd` | Staged changes `│` (`git diff` fallback only) |
 | `NyanGitUnstaged` | `GitSignsChange` | Unstaged changes `│` |
 | `NyanGitAdded` | `GitSignsAdd` | Added hunks `│` |
 | `NyanGitRemoved` | `GitSignsDelete` | Removed hunks `│` |

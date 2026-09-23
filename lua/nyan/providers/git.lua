@@ -180,18 +180,9 @@ local function get_from_gitsigns(bufnr)
     return nil
   end
 
-  -- Build set of staged hunk start lines
-  local staged_lines = {}
-  local staged_ok, staged_hunks = pcall(gitsigns.get_hunks, bufnr, { staged = true })
-  if staged_ok and staged_hunks then
-    for _, h in ipairs(staged_hunks) do
-      local line = h.added and h.added.start or h.removed and h.removed.start
-      if line and line > 0 then
-        staged_lines[line] = true
-      end
-    end
-  end
-
+  -- get_hunks() diffs the buffer against gitsigns' base (the index by
+  -- default), so every hunk is unstaged. It takes no options: asking it for
+  -- staged hunks returns these same ones.
   local result = {}
   for _, h in ipairs(hunks) do
     local line = h.added and h.added.start or 0
@@ -202,7 +193,7 @@ local function get_from_gitsigns(bufnr)
       table.insert(result, {
         line = line,
         type = h.type,
-        staged = staged_lines[line] == true,
+        staged = false,
       })
     end
   end
