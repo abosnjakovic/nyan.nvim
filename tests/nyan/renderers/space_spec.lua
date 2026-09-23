@@ -97,6 +97,68 @@ describe("renderers.space", function()
     end)
   end)
 
+  describe("viewport thumb", function()
+    local orig_height
+
+    -- One { hl, char } per bar cell; the brackets carry no %* so they drop out.
+    local function cells(result)
+      local out = {}
+      for hl, char in result:gmatch("%%#([^#]+)#([^%%]*)%%%*") do
+        table.insert(out, { hl = hl, char = char })
+      end
+      return out
+    end
+
+    before_each(function()
+      orig_height = vim.api.nvim_win_get_height(0)
+      -- 10-line window showing lines 50-59 of 100, cursor on 55. On the
+      -- 20-cell bar that is w0 -> cell 9, cursor -> cell 10, w$ -> cell 11.
+      vim.api.nvim_win_set_height(0, 10)
+      vim.fn.winrestview({ topline = 50, lnum = 55 })
+      -- Guard the premise: if headless stops honouring these, fail here
+      -- rather than pass against a different viewport.
+      assert.equals(50, vim.fn.line("w0"))
+      assert.equals(59, vim.fn.line("w$"))
+    end)
+
+    after_each(function()
+      vim.api.nvim_win_set_height(0, orig_height)
+    end)
+
+    it("highlights only the cells spanning w0..w$ as NyanViewport", function()
+      local expected = {}
+      for i = 1, 20 do
+        expected[i] = "NyanTrail"
+      end
+      expected[10] = "NyanViewport" -- cell 9: w0
+      expected[11] = "NyanShip" -- cell 10: cursor
+      expected[12] = "NyanViewport" -- cell 11: w$, inclusive
+
+      local got = {}
+      for i, c in ipairs(cells(space.render())) do
+        got[i] = c.hl
+      end
+      assert.same(expected, got)
+    end)
+
+    it("keeps the trail character, so the bar layout does not shift", function()
+      local bar = cells(space.render())
+      assert.equals("·", bar[10].char)
+      assert.equals("·", bar[12].char)
+    end)
+
+    it("lets a marker inside the viewport keep its own highlight", function()
+      local ns = vim.api.nvim_create_namespace("test_viewport_marker")
+      vim.diagnostic.set(ns, buf, {
+        { lnum = 58, col = 0, message = "err", severity = vim.diagnostic.severity.ERROR },
+      })
+
+      local bar = cells(space.render())
+      assert.same({ hl = "NyanDiagError", char = "✕" }, bar[12])
+      assert.equals("NyanShip", bar[11].hl)
+    end)
+  end)
+
   describe("map_to_cell", function()
     it("maps line 1 to cell 0", function()
       local cell = space.map_to_cell(1, 100, 20)
@@ -235,6 +297,24 @@ describe("renderers.space", function()
 
       vim.api.nvim_set_hl(0, "Search", orig_search)
       assert.equals(0xabcdef, hl.fg)
+    end)
+
+    it("takes NyanViewport's foreground from Normal, without its background", function()
+      -- Normal's bg would paint the thumb as a filled block; only Normal's fg
+      -- should set it apart from the Comment-coloured trail. ctermfg too, or
+      -- terminals without 'termguicolors' get no thumb colour at all.
+      local orig_normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
+      vim.cmd("highlight clear NyanViewport")
+      vim.api.nvim_set_hl(0, "Normal", { fg = 0x123456, bg = 0x654321, ctermfg = 7, ctermbg = 0 })
+
+      space.setup_highlights()
+      local hl = vim.api.nvim_get_hl(0, { name = "NyanViewport", link = false })
+
+      vim.api.nvim_set_hl(0, "Normal", orig_normal)
+      assert.equals(0x123456, hl.fg)
+      assert.equals(7, hl.ctermfg)
+      assert.is_nil(hl.bg)
+      assert.is_nil(hl.ctermbg)
     end)
   end)
 end)
