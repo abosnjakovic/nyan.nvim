@@ -166,9 +166,15 @@ local function refresh(bufnr, filepath)
       end
     end
 
-    vim.system({ "git", "-C", git_root, "diff", "--unified=0", "--", filepath }, { text = true }, collect("unstaged"))
+    -- --no-ext-diff and --no-color: a user's diff.external or color.diff=always
+    -- would hide the @@ headers, and with them every marker.
     vim.system(
-      { "git", "-C", git_root, "diff", "--unified=0", "--cached", "--", filepath },
+      { "git", "-C", git_root, "diff", "--no-ext-diff", "--no-color", "--unified=0", "--", filepath },
+      { text = true },
+      collect("unstaged")
+    )
+    vim.system(
+      { "git", "-C", git_root, "diff", "--no-ext-diff", "--no-color", "--unified=0", "--cached", "--", filepath },
       { text = true },
       collect("staged")
     )

@@ -319,6 +319,23 @@ describe("providers.git (git diff path)", function()
     assert.equals("change", result[1].type)
   end)
 
+  it("reads hunks despite an external diff tool or forced colour", function()
+    -- Both are common global settings (difftastic sets diff.external). Either
+    -- one hides the @@ headers, and with them every marker.
+    git_run(repo, "config", "diff.external", "true")
+    git_run(repo, "config", "color.diff", "always")
+    local path = repo .. "/file.txt"
+    write_file(path, "a\nb\nc\n")
+    git_run(repo, "add", "file.txt")
+    git_run(repo, "commit", "-q", "-m", "init")
+    write_file(path, "a\nB\nc\n")
+
+    local buf = open_buf(path)
+    local result = await_markers(buf)
+    assert.equals(1, #result)
+    assert.equals(2, result[1].line)
+  end)
+
   it("marks staged hunks via staged flag", function()
     local path = repo .. "/file.txt"
     write_file(path, "a\nb\nc\n")
