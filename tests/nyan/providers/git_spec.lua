@@ -84,6 +84,42 @@ describe("providers.git", function()
     end)
   end)
 
+  describe("staged line mapping", function()
+    -- Staged hunks are numbered against the index; the markers must land on
+    -- buffer lines, shifted by whatever unstaged hunks sit above them.
+    local function staged_at(unstaged, staged)
+      local out = {}
+      for _, m in ipairs(git._build_markers(unstaged, staged)) do
+        if m.staged then
+          table.insert(out, m.line)
+        end
+      end
+      return out
+    end
+
+    it("pulls a staged hunk up by an unstaged deletion above, ignoring hunks below", function()
+      -- Index lines 3-4 deleted (-2); the insertion at index 40 is below and must not count
+      assert.same({ 8 }, staged_at({ "@@ -3,2 +2,0 @@", "@@ -40,0 +39,4 @@" }, { "@@ -10 +10 @@" }))
+    end)
+
+    it("sums every unstaged hunk above, not only the last", function()
+      assert.same({ 21 }, staged_at({ "@@ -0,0 +1,3 @@", "@@ -5,2 +7,0 @@" }, { "@@ -20 +20 @@" }))
+      -- A header with no count is one line: one line becoming three is +2
+      assert.same({ 22 }, staged_at({ "@@ -5 +5,3 @@" }, { "@@ -20 +20 @@" }))
+    end)
+
+    it("does not move a staged line for an insertion directly below it", function()
+      assert.same({ 20 }, staged_at({ "@@ -20,0 +21,2 @@" }, { "@@ -20 +20 @@" }))
+      assert.same({ 22 }, staged_at({ "@@ -19,0 +20,2 @@" }, { "@@ -20 +20 @@" }))
+    end)
+
+    it("keeps a staged line inside the unstaged rewrite that swallowed it", function()
+      -- Index 10-19 rewritten as buffer 10-11. Unshifted, staged index 17 would
+      -- land on buffer 17: the unrelated unstaged edit of index 25.
+      assert.same({ 11 }, staged_at({ "@@ -10,10 +10,2 @@", "@@ -25 +17 @@" }, { "@@ -17 +17 @@" }))
+    end)
+  end)
+
   describe("with mock gitsigns", function()
     before_each(function()
       package.loaded["gitsigns"] = {
@@ -281,6 +317,33 @@ describe("providers.git (git diff path)", function()
       end
     end
     assert.is_true(found_staged)
+  end)
+
+  it("places a staged hunk on its buffer line when unstaged edits shift it", function()
+    local path = repo .. "/file.txt"
+    local lines = {}
+    for i = 1, 30 do
+      lines[i] = tostring(i)
+    end
+    write_file(path, table.concat(lines, "\n") .. "\n")
+    git_run(repo, "add", "file.txt")
+    git_run(repo, "commit", "-q", "-m", "init")
+
+    -- Stage a change to line 20, then insert five unstaged lines above it.
+    -- The index still numbers the change 20; the buffer shows it on line 25.
+    lines[20] = "twenty"
+    write_file(path, table.concat(lines, "\n") .. "\n")
+    git_run(repo, "add", "file.txt")
+    write_file(path, "a\nb\nc\nd\ne\n" .. table.concat(lines, "\n") .. "\n")
+
+    local buf = open_buf(path)
+    local staged_at = {}
+    for _, r in ipairs(await_markers(buf)) do
+      if r.staged then
+        table.insert(staged_at, r.line)
+      end
+    end
+    assert.same({ 25 }, staged_at)
   end)
 
   it("caches results across calls until invalidated", function()
