@@ -78,6 +78,13 @@ describe("providers.git", function()
       assert.equals("change", hunk.type)
     end)
 
+    it("places a top-of-file deletion on line 1", function()
+      -- new_start 0 means "before line 1"; line 0 would fall off the bar
+      local hunk = git._parse_hunk_header("@@ -1,2 +0,0 @@")
+      assert.equals(1, hunk.line)
+      assert.equals("delete", hunk.type)
+    end)
+
     it("returns nil for invalid header", function()
       local hunk = git._parse_hunk_header("not a hunk header")
       assert.is_nil(hunk)
@@ -126,7 +133,10 @@ describe("providers.git", function()
         get_hunks = function()
           return {
             { added = { start = 10, count = 5 }, removed = { start = 0, count = 0 }, type = "add" },
-            { added = { start = 50, count = 0 }, removed = { start = 50, count = 3 }, type = "delete" },
+            -- added.start is the buffer line, removed.start the index line: they
+            -- differ once earlier hunks shift the file, and only added.start is
+            -- where the buffer shows the deletion.
+            { added = { start = 47, count = 0 }, removed = { start = 50, count = 3 }, type = "delete" },
             { added = { start = 80, count = 2 }, removed = { start = 80, count = 2 }, type = "change" },
           }
         end,
@@ -143,10 +153,21 @@ describe("providers.git", function()
       assert.equals(10, result[1].line)
       assert.equals("add", result[1].type)
       assert.is_false(result[1].staged)
-      assert.equals(50, result[2].line)
+      assert.equals(47, result[2].line)
       assert.equals("delete", result[2].type)
       assert.equals(80, result[3].line)
       assert.equals("change", result[3].type)
+    end)
+
+    it("draws a top-of-file deletion on line 1 instead of dropping it", function()
+      package.loaded["gitsigns"] = {
+        get_hunks = function()
+          return { { added = { start = 0, count = 0 }, removed = { start = 1, count = 2 }, type = "delete" } }
+        end,
+      }
+      local result = git.get(0)
+      assert.equals(1, #result)
+      assert.equals(1, result[1].line)
     end)
 
     it("never marks gitsigns hunks staged", function()

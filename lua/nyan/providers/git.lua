@@ -31,10 +31,9 @@ local function parse_hunk_header(header)
     hunk_type = "change"
   end
 
-  local line = new_start
-  if hunk_type == "delete" and new_count == 0 then
-    line = new_start
-  end
+  -- A deletion sits after new_start; one at the top of the file (0) is drawn
+  -- on line 1, as gitsigns does, rather than dropped.
+  local line = hunk_type == "delete" and math.max(new_start, 1) or new_start
 
   return { line = line, type = hunk_type, old_start = old_start, old_count = old_count, new_count = new_count }
 end
@@ -85,27 +84,18 @@ local function build_markers(diff_output, staged_output)
   local unstaged = parse_hunks(diff_output)
 
   -- Staged hunks moved onto buffer lines, so they compare with unstaged ones
-  local staged = {}
+  local staged = parse_hunks(staged_output)
   local staged_lines = {}
-  for _, hunk in ipairs(parse_hunks(staged_output)) do
+  for _, hunk in ipairs(staged) do
     hunk.line = index_to_worktree(hunk.line, unstaged)
-    if hunk.line > 0 then
-      table.insert(staged, hunk)
-      staged_lines[hunk.line] = true
-    end
+    staged_lines[hunk.line] = true
   end
 
   local result = {}
   local present = {}
   for _, hunk in ipairs(unstaged) do
-    if hunk.line > 0 then
-      table.insert(result, {
-        line = hunk.line,
-        type = hunk.type,
-        staged = staged_lines[hunk.line] == true,
-      })
-      present[hunk.line] = true
-    end
+    table.insert(result, { line = hunk.line, type = hunk.type, staged = staged_lines[hunk.line] == true })
+    present[hunk.line] = true
   end
 
   -- Also add staged-only hunks (not in unstaged diff)
@@ -208,9 +198,11 @@ local function get_from_gitsigns(bufnr)
   -- staged hunks returns these same ones.
   local result = {}
   for _, h in ipairs(hunks) do
+    -- added is the buffer side; removed.start numbers the index, not the buffer
     local line = h.added and h.added.start or 0
     if h.type == "delete" then
-      line = h.removed and h.removed.start or 0
+      -- A deletion sits after added.start; gitsigns draws a top-of-file one on line 1
+      line = math.max(line, 1)
     end
     if line > 0 then
       table.insert(result, {
