@@ -10,13 +10,14 @@ local next_token = 0
 --- Parse a git diff unified format hunk header
 --- Format: @@ -old_start[,old_count] +new_start[,new_count] @@
 ---@param header string The @@ line
----@return { line: number, type: string }?
+---@return { line: number, type: string, old_start: number, old_count: number, new_count: number }?
 local function parse_hunk_header(header)
-  local _, old_count, new_start, new_count = header:match("@@ %-(%d+),?(%d*) %+(%d+),?(%d*) @@")
+  local old_start, old_count, new_start, new_count = header:match("@@ %-(%d+),?(%d*) %+(%d+),?(%d*) @@")
   if not new_start then
     return nil
   end
 
+  old_start = tonumber(old_start)
   old_count = tonumber(old_count) or 1
   new_count = tonumber(new_count) or 1
   new_start = tonumber(new_start)
@@ -30,12 +31,49 @@ local function parse_hunk_header(header)
     hunk_type = "change"
   end
 
-  local line = new_start
-  if hunk_type == "delete" and new_count == 0 then
-    line = new_start
-  end
+  -- A deletion sits after new_start; one at the top of the file (0) is drawn
+  -- on line 1, as gitsigns does, rather than dropped.
+  local line = hunk_type == "delete" and math.max(new_start, 1) or new_start
 
-  return { line = line, type = hunk_type }
+  return { line = line, type = hunk_type, old_start = old_start, old_count = old_count, new_count = new_count }
+end
+
+--- Parse every hunk header in a diff
+---@param diff_output string[]
+---@return table[] hunks In file order
+local function parse_hunks(diff_output)
+  local hunks = {}
+  for _, line in ipairs(diff_output) do
+    local hunk = line:match("^@@") and parse_hunk_header(line)
+    if hunk then
+      table.insert(hunks, hunk)
+    end
+  end
+  return hunks
+end
+
+--- Move an index line number onto the working tree (the buffer, once saved).
+--- `git diff --cached` numbers lines against the index, so every unstaged
+--- hunk above a staged one shifts where it appears in the buffer.
+---@param line number Line in the index
+---@param unstaged table[] Hunks from `git diff`, whose old side is the index
+---@return number line Line in the working tree
+local function index_to_worktree(line, unstaged)
+  local offset = 0
+  for _, hunk in ipairs(unstaged) do
+    -- A pure insertion (old_count 0) sits after old_start; anything else
+    -- covers old_start .. old_start + old_count - 1.
+    if line < hunk.old_start + math.max(hunk.old_count, 1) then
+      if hunk.old_count > 0 and line >= hunk.old_start then
+        -- Rewritten again since it was staged. The rewrite may be shorter, so
+        -- keep the line inside it rather than spilling onto lines below.
+        return math.min(line + offset, hunk.line + math.max(hunk.new_count, 1) - 1)
+      end
+      break
+    end
+    offset = offset + hunk.new_count - hunk.old_count
+  end
+  return line + offset
 end
 
 --- Merge unstaged and staged diff output into markers
@@ -43,52 +81,27 @@ end
 ---@param staged_output string[] Lines of `git diff --cached`
 ---@return { line: number, type: string, staged: boolean }[]
 local function build_markers(diff_output, staged_output)
-  -- Parse staged lines into a set
+  local unstaged = parse_hunks(diff_output)
+
+  -- Staged hunks moved onto buffer lines, so they compare with unstaged ones
+  local staged = parse_hunks(staged_output)
   local staged_lines = {}
-  for _, line in ipairs(staged_output) do
-    if line:match("^@@") then
-      local hunk = parse_hunk_header(line)
-      if hunk and hunk.line > 0 then
-        staged_lines[hunk.line] = true
-      end
-    end
+  for _, hunk in ipairs(staged) do
+    hunk.line = index_to_worktree(hunk.line, unstaged)
+    staged_lines[hunk.line] = true
   end
 
-  -- Parse unstaged hunks
   local result = {}
-  for _, line in ipairs(diff_output) do
-    if line:match("^@@") then
-      local hunk = parse_hunk_header(line)
-      if hunk and hunk.line > 0 then
-        table.insert(result, {
-          line = hunk.line,
-          type = hunk.type,
-          staged = staged_lines[hunk.line] == true,
-        })
-      end
-    end
+  local present = {}
+  for _, hunk in ipairs(unstaged) do
+    table.insert(result, { line = hunk.line, type = hunk.type, staged = staged_lines[hunk.line] == true })
+    present[hunk.line] = true
   end
 
   -- Also add staged-only hunks (not in unstaged diff)
-  for _, line in ipairs(staged_output) do
-    if line:match("^@@") then
-      local hunk = parse_hunk_header(line)
-      if hunk and hunk.line > 0 then
-        local already_present = false
-        for _, r in ipairs(result) do
-          if r.line == hunk.line then
-            already_present = true
-            break
-          end
-        end
-        if not already_present then
-          table.insert(result, {
-            line = hunk.line,
-            type = hunk.type,
-            staged = true,
-          })
-        end
-      end
+  for _, hunk in ipairs(staged) do
+    if not present[hunk.line] then
+      table.insert(result, { line = hunk.line, type = hunk.type, staged = true })
     end
   end
 
@@ -153,9 +166,15 @@ local function refresh(bufnr, filepath)
       end
     end
 
-    vim.system({ "git", "-C", git_root, "diff", "--unified=0", "--", filepath }, { text = true }, collect("unstaged"))
+    -- --no-ext-diff and --no-color: a user's diff.external or color.diff=always
+    -- would hide the @@ headers, and with them every marker.
     vim.system(
-      { "git", "-C", git_root, "diff", "--unified=0", "--cached", "--", filepath },
+      { "git", "-C", git_root, "diff", "--no-ext-diff", "--no-color", "--unified=0", "--", filepath },
+      { text = true },
+      collect("unstaged")
+    )
+    vim.system(
+      { "git", "-C", git_root, "diff", "--no-ext-diff", "--no-color", "--unified=0", "--cached", "--", filepath },
       { text = true },
       collect("staged")
     )
@@ -180,29 +199,22 @@ local function get_from_gitsigns(bufnr)
     return nil
   end
 
-  -- Build set of staged hunk start lines
-  local staged_lines = {}
-  local staged_ok, staged_hunks = pcall(gitsigns.get_hunks, bufnr, { staged = true })
-  if staged_ok and staged_hunks then
-    for _, h in ipairs(staged_hunks) do
-      local line = h.added and h.added.start or h.removed and h.removed.start
-      if line and line > 0 then
-        staged_lines[line] = true
-      end
-    end
-  end
-
+  -- get_hunks() diffs the buffer against gitsigns' base (the index by
+  -- default), so every hunk is unstaged. It takes no options: asking it for
+  -- staged hunks returns these same ones.
   local result = {}
   for _, h in ipairs(hunks) do
+    -- added is the buffer side; removed.start numbers the index, not the buffer
     local line = h.added and h.added.start or 0
     if h.type == "delete" then
-      line = h.removed and h.removed.start or 0
+      -- A deletion sits after added.start; gitsigns draws a top-of-file one on line 1
+      line = math.max(line, 1)
     end
     if line > 0 then
       table.insert(result, {
         line = line,
         type = h.type,
-        staged = staged_lines[line] == true,
+        staged = false,
       })
     end
   end
@@ -257,5 +269,6 @@ end
 
 --- Exposed for testing
 M._parse_hunk_header = parse_hunk_header
+M._build_markers = build_markers
 
 return M

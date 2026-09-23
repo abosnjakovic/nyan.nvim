@@ -67,6 +67,10 @@ end
 M.setup_highlights = function()
   vim.api.nvim_set_hl(0, "NyanShip", { fg = "#ffffff", bold = true, default = true })
   vim.api.nvim_set_hl(0, "NyanTrail", { link = "Comment", default = true })
+  -- Normal's text colour stands out from Comment in most colourschemes. fg
+  -- only (GUI and cterm): Normal's bg would fill the cell.
+  local normal_hl = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
+  vim.api.nvim_set_hl(0, "NyanViewport", { fg = normal_hl.fg, ctermfg = normal_hl.ctermfg, default = true })
   vim.api.nvim_set_hl(0, "NyanBracket", { link = "Comment", default = true })
   -- Search hits borrow the colourscheme's search colour as a *foreground*.
   -- Linking to Search would drag in its background too, turning every hit into
@@ -100,6 +104,9 @@ M.render = function()
   local available_width = cfg.width - 2 -- minus brackets
   local scroll_frac = position.get_scroll_position()
   local ship_cell = math.floor(scroll_frac * (available_width - 1))
+  -- Same mapping as the markers, so the thumb's edges line up with them.
+  local view_top = M.map_to_cell(vim.fn.line("w0"), total_lines, available_width)
+  local view_bottom = M.map_to_cell(vim.fn.line("w$"), total_lines, available_width)
 
   -- Collect markers
   local markers = {}
@@ -153,7 +160,9 @@ M.render = function()
     elseif markers[i] then
       table.insert(parts, string.format("%%#%s#%s%%*", markers[i].hl, markers[i].char))
     else
-      table.insert(parts, string.format("%%#NyanTrail#%s%%*", TRAIL))
+      -- Colour-only thumb: keeping the trail character holds the bar layout steady.
+      local hl = (i >= view_top and i <= view_bottom) and "NyanViewport" or "NyanTrail"
+      table.insert(parts, string.format("%%#%s#%s%%*", hl, TRAIL))
     end
   end
 

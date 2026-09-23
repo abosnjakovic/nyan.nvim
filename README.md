@@ -10,7 +10,7 @@ A Neovim statusline component with two rendering modes: a space-themed scroll mi
 [ · │ · ✕ · ▷ · · · ✕ · · │ · · · · · ]
 ```
 
-The space theme turns your statusline into a minimap of the current buffer. The ship `▷` shows your cursor position, diagnostic markers `✕` show LSP errors/warnings at their proportional file location, git change markers `│` show where hunks are, and search markers `/` show where the current search pattern hits. Colours distinguish severity and change type — you get a spatial overview of your file's health without leaving your code.
+The space theme turns your statusline into a minimap of the current buffer. The ship `▷` shows your cursor position, and the trail dots covering the lines on screen take your normal text colour, like a scrollbar thumb. Diagnostic markers `✕` show LSP errors/warnings at their proportional file location, git change markers `│` show where hunks are, and search markers `/` show where the current search pattern hits. Colours distinguish severity and change type — you get a spatial overview of your file's health without leaving your code.
 
 Search markers update live as you type in `/` or `?`, so you can see where a pattern lands before committing to it, and they clear with `:noh`.
 
@@ -92,14 +92,15 @@ The space theme links to your existing colourscheme highlight groups by default:
 | Group | Links To | Used For |
 |---|---|---|
 | `NyanShip` | — (bright white) | Ship indicator `▷` |
-| `NyanTrail` | `Comment` | Trail dots `·` |
+| `NyanTrail` | `Comment` | Trail dots `·` outside the visible window |
+| `NyanViewport` | `Normal`'s colour, as foreground | Trail dots `·` inside the visible window |
 | `NyanBracket` | `Comment` | Brackets `[ ]` |
 | `NyanSearch` | `Search`'s colour, as foreground | Search hits `/` |
 | `NyanDiagError` | `DiagnosticError` | Error markers `✕` |
 | `NyanDiagWarn` | `DiagnosticWarn` | Warning markers `✕` |
 | `NyanDiagInfo` | `DiagnosticInfo` | Info markers `✕` |
 | `NyanDiagHint` | `DiagnosticHint` | Hint markers `✕` |
-| `NyanGitStaged` | `GitSignsAdd` | Staged changes `│` |
+| `NyanGitStaged` | `GitSignsAdd` | Staged changes `│` (`git diff` fallback only) |
 | `NyanGitUnstaged` | `GitSignsChange` | Unstaged changes `│` |
 | `NyanGitAdded` | `GitSignsAdd` | Added hunks `│` |
 | `NyanGitRemoved` | `GitSignsDelete` | Removed hunks `│` |
@@ -121,9 +122,16 @@ The space theme links to your existing colourscheme highlight groups by default:
 
 ## Troubleshooting
 
-Run `:checkhealth nyan`. It reports whether your terminal supports the Kitty
+Run `:checkhealth nyan`. It checks that `setup()` has run and shows which
+renderer is active, then checks only what that renderer needs.
+
+For the space renderer, it checks where git markers come from. gitsigns updates
+them as you type; without it, the `git` binary refreshes them when you write,
+switch buffers or refocus Neovim; with neither, there are no git markers.
+
+For the nyan renderer, it reports whether your terminal supports the Kitty
 Graphics Protocol, whether you're inside tmux (and the `allow-passthrough`
-setting graphics need there), and whether the sprite assets are present — which
+setting graphics need there), and whether the sprite assets are present. That
 covers most "the cat isn't showing" cases.
 
 ## Credits

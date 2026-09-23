@@ -78,24 +78,65 @@ describe("providers.git", function()
       assert.equals("change", hunk.type)
     end)
 
+    it("places a top-of-file deletion on line 1", function()
+      -- new_start 0 means "before line 1"; line 0 would fall off the bar
+      local hunk = git._parse_hunk_header("@@ -1,2 +0,0 @@")
+      assert.equals(1, hunk.line)
+      assert.equals("delete", hunk.type)
+    end)
+
     it("returns nil for invalid header", function()
       local hunk = git._parse_hunk_header("not a hunk header")
       assert.is_nil(hunk)
     end)
   end)
 
+  describe("staged line mapping", function()
+    -- Staged hunks are numbered against the index; the markers must land on
+    -- buffer lines, shifted by whatever unstaged hunks sit above them.
+    local function staged_at(unstaged, staged)
+      local out = {}
+      for _, m in ipairs(git._build_markers(unstaged, staged)) do
+        if m.staged then
+          table.insert(out, m.line)
+        end
+      end
+      return out
+    end
+
+    it("pulls a staged hunk up by an unstaged deletion above, ignoring hunks below", function()
+      -- Index lines 3-4 deleted (-2); the insertion at index 40 is below and must not count
+      assert.same({ 8 }, staged_at({ "@@ -3,2 +2,0 @@", "@@ -40,0 +39,4 @@" }, { "@@ -10 +10 @@" }))
+    end)
+
+    it("sums every unstaged hunk above, not only the last", function()
+      assert.same({ 21 }, staged_at({ "@@ -0,0 +1,3 @@", "@@ -5,2 +7,0 @@" }, { "@@ -20 +20 @@" }))
+      -- A header with no count is one line: one line becoming three is +2
+      assert.same({ 22 }, staged_at({ "@@ -5 +5,3 @@" }, { "@@ -20 +20 @@" }))
+    end)
+
+    it("does not move a staged line for an insertion directly below it", function()
+      assert.same({ 20 }, staged_at({ "@@ -20,0 +21,2 @@" }, { "@@ -20 +20 @@" }))
+      assert.same({ 22 }, staged_at({ "@@ -19,0 +20,2 @@" }, { "@@ -20 +20 @@" }))
+    end)
+
+    it("keeps a staged line inside the unstaged rewrite that swallowed it", function()
+      -- Index 10-19 rewritten as buffer 10-11. Unshifted, staged index 17 would
+      -- land on buffer 17: the unrelated unstaged edit of index 25.
+      assert.same({ 11 }, staged_at({ "@@ -10,10 +10,2 @@", "@@ -25 +17 @@" }, { "@@ -17 +17 @@" }))
+    end)
+  end)
+
   describe("with mock gitsigns", function()
     before_each(function()
       package.loaded["gitsigns"] = {
-        get_hunks = function(bufnr, opts)
-          if opts and opts.staged then
-            return {
-              { added = { start = 20, count = 3 }, removed = { start = 0, count = 0 }, type = "add" },
-            }
-          end
+        get_hunks = function()
           return {
             { added = { start = 10, count = 5 }, removed = { start = 0, count = 0 }, type = "add" },
-            { added = { start = 50, count = 0 }, removed = { start = 50, count = 3 }, type = "delete" },
+            -- added.start is the buffer line, removed.start the index line: they
+            -- differ once earlier hunks shift the file, and only added.start is
+            -- where the buffer shows the deletion.
+            { added = { start = 47, count = 0 }, removed = { start = 50, count = 3 }, type = "delete" },
             { added = { start = 80, count = 2 }, removed = { start = 80, count = 2 }, type = "change" },
           }
         end,
@@ -112,33 +153,33 @@ describe("providers.git", function()
       assert.equals(10, result[1].line)
       assert.equals("add", result[1].type)
       assert.is_false(result[1].staged)
-      assert.equals(50, result[2].line)
+      assert.equals(47, result[2].line)
       assert.equals("delete", result[2].type)
       assert.equals(80, result[3].line)
       assert.equals("change", result[3].type)
     end)
 
-    it("marks staged hunks when lines overlap", function()
+    it("draws a top-of-file deletion on line 1 instead of dropping it", function()
       package.loaded["gitsigns"] = {
-        get_hunks = function(bufnr, opts)
-          if opts and opts.staged then
-            return {
-              { added = { start = 10, count = 3 }, removed = { start = 0, count = 0 }, type = "add" },
-            }
-          end
-          return {
-            { added = { start = 10, count = 5 }, removed = { start = 0, count = 0 }, type = "add" },
-            { added = { start = 50, count = 0 }, removed = { start = 50, count = 3 }, type = "delete" },
-          }
+        get_hunks = function()
+          return { { added = { start = 0, count = 0 }, removed = { start = 1, count = 2 }, type = "delete" } }
         end,
       }
-
       local result = git.get(0)
-      assert.equals(2, #result)
-      assert.equals(10, result[1].line)
-      assert.is_true(result[1].staged)
-      assert.equals(50, result[2].line)
-      assert.is_false(result[2].staged)
+      assert.equals(1, #result)
+      assert.equals(1, result[1].line)
+    end)
+
+    it("never marks gitsigns hunks staged", function()
+      -- gitsigns.get_hunks(bufnr) diffs the buffer against the index, so every
+      -- hunk it returns is unstaged. It takes no options: a { staged = true }
+      -- argument is ignored and returns these same hunks, which once coloured
+      -- every marker as staged.
+      local result = git.get(0)
+      assert.equals(3, #result)
+      for _, r in ipairs(result) do
+        assert.is_false(r.staged)
+      end
     end)
   end)
 
@@ -278,6 +319,23 @@ describe("providers.git (git diff path)", function()
     assert.equals("change", result[1].type)
   end)
 
+  it("reads hunks despite an external diff tool or forced colour", function()
+    -- Both are common global settings (difftastic sets diff.external). Either
+    -- one hides the @@ headers, and with them every marker.
+    git_run(repo, "config", "diff.external", "true")
+    git_run(repo, "config", "color.diff", "always")
+    local path = repo .. "/file.txt"
+    write_file(path, "a\nb\nc\n")
+    git_run(repo, "add", "file.txt")
+    git_run(repo, "commit", "-q", "-m", "init")
+    write_file(path, "a\nB\nc\n")
+
+    local buf = open_buf(path)
+    local result = await_markers(buf)
+    assert.equals(1, #result)
+    assert.equals(2, result[1].line)
+  end)
+
   it("marks staged hunks via staged flag", function()
     local path = repo .. "/file.txt"
     write_file(path, "a\nb\nc\n")
@@ -297,6 +355,33 @@ describe("providers.git (git diff path)", function()
       end
     end
     assert.is_true(found_staged)
+  end)
+
+  it("places a staged hunk on its buffer line when unstaged edits shift it", function()
+    local path = repo .. "/file.txt"
+    local lines = {}
+    for i = 1, 30 do
+      lines[i] = tostring(i)
+    end
+    write_file(path, table.concat(lines, "\n") .. "\n")
+    git_run(repo, "add", "file.txt")
+    git_run(repo, "commit", "-q", "-m", "init")
+
+    -- Stage a change to line 20, then insert five unstaged lines above it.
+    -- The index still numbers the change 20; the buffer shows it on line 25.
+    lines[20] = "twenty"
+    write_file(path, table.concat(lines, "\n") .. "\n")
+    git_run(repo, "add", "file.txt")
+    write_file(path, "a\nb\nc\nd\ne\n" .. table.concat(lines, "\n") .. "\n")
+
+    local buf = open_buf(path)
+    local staged_at = {}
+    for _, r in ipairs(await_markers(buf)) do
+      if r.staged then
+        table.insert(staged_at, r.line)
+      end
+    end
+    assert.same({ 25 }, staged_at)
   end)
 
   it("caches results across calls until invalidated", function()

@@ -1,6 +1,6 @@
 --- Health check for nyan.nvim (:checkhealth nyan)
---- The whole support surface for a terminal-graphics plugin is "I installed it
---- and see nothing", so this reports exactly why graphics would or wouldn't show.
+--- The whole support surface for a statusline plugin is "I installed it and see
+--- nothing", so this reports exactly why the active renderer would or wouldn't show.
 
 local kitty = require("nyan.kitty")
 local config = require("nyan.config")
@@ -15,6 +15,39 @@ local function check_nvim()
     health.ok("Neovim >= 0.10")
   else
     health.error("Neovim 0.10+ required", "nyan.setup() aborts on older versions")
+  end
+end
+
+--- Report whether setup() has run: until it does, get() returns "" and the
+--- statusline is silently empty. setup() creates the NyanNvim augroup once past
+--- its version check, so the group stands in for init.lua's private
+--- `initialized` flag without exporting it.
+local function check_setup()
+  if vim.fn.exists("#NyanNvim") == 1 then
+    health.ok("setup() has run")
+  else
+    health.warn("setup() has not run -- the statusline component renders nothing", 'Call require("nyan").setup()')
+  end
+end
+
+--- Report where git markers come from: gitsigns if it loads (buffers it has
+--- not attached to still fall back), else `git diff`. gitsigns holds hunks in
+--- memory, so markers follow every edit; the `git diff` fallback only
+--- refreshes on write, BufEnter and FocusGained.
+local function check_git()
+  local ok, err = pcall(require, "gitsigns")
+  if ok then
+    health.ok("gitsigns found -- git markers update as you edit")
+  elseif not tostring(err):find("module 'gitsigns' not found", 1, true) then
+    -- Installed but broken: "not found" would tell the user to install it
+    health.warn("gitsigns failed to load -- git markers fall back to `git diff`", tostring(err))
+  elseif vim.fn.executable("git") == 1 then
+    health.ok(
+      "gitsigns not found -- git markers use `git diff`, refreshed on write, buffer switch and focus"
+        .. " (install gitsigns for live updates)"
+    )
+  else
+    health.warn("Neither gitsigns nor git found -- no git markers", "Install git, or gitsigns.nvim")
   end
 end
 
@@ -73,6 +106,11 @@ end
 local function check_config()
   local cfg = config.get()
   health.info("renderer = " .. tostring(cfg.renderer))
+  if cfg.renderer ~= "space" and cfg.renderer ~= "nyan" then
+    -- render.lua draws the space bar for it, but setup() skips the space
+    -- highlights and refresh autocmds, so a typo leaves it half working
+    health.error(("Unknown renderer %q"):format(tostring(cfg.renderer)), 'Set renderer = "space" or "nyan"')
+  end
   health.info("animation = " .. (cfg.animation.enabled and ("on, fps=" .. cfg.animation.fps) or "off"))
   health.info("fallback = " .. tostring(cfg.fallback))
 end
@@ -80,9 +118,20 @@ end
 M.check = function()
   health.start("nyan.nvim")
   check_nvim()
-  check_terminal()
-  check_assets()
+  check_setup()
   check_config()
+
+  -- Only the active renderer's dependencies are checked: a Kitty warning is a
+  -- false alarm for a space user, and git markers mean nothing to the cat.
+  -- Same test as render.lua, so any non-"nyan" value is treated as space.
+  if config.get().renderer == "nyan" then
+    health.start("nyan.nvim: nyan renderer")
+    check_terminal()
+    check_assets()
+  else
+    health.start("nyan.nvim: space renderer")
+    check_git()
+  end
 end
 
 return M
