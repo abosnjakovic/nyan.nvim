@@ -122,9 +122,16 @@ The space theme links to your existing colourscheme highlight groups by default:
 
 ## Troubleshooting
 
-Run `:checkhealth nyan`. It reports whether your terminal supports the Kitty
+Run `:checkhealth nyan`. It checks that `setup()` has run and shows which
+renderer is active, then checks only what that renderer needs.
+
+For the space renderer, it checks where git markers come from. gitsigns updates
+them as you type; without it, the `git` binary refreshes them when you write,
+switch buffers or refocus Neovim; with neither, there are no git markers.
+
+For the nyan renderer, it reports whether your terminal supports the Kitty
 Graphics Protocol, whether you're inside tmux (and the `allow-passthrough`
-setting graphics need there), and whether the sprite assets are present — which
+setting graphics need there), and whether the sprite assets are present. That
 covers most "the cat isn't showing" cases.
 
 ## Credits
