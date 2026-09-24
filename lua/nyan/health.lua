@@ -107,9 +107,11 @@ local function check_config()
   local cfg = config.get()
   health.info("renderer = " .. tostring(cfg.renderer))
   if cfg.renderer ~= "space" and cfg.renderer ~= "nyan" then
-    -- render.lua draws the space bar for it, but setup() skips the space
-    -- highlights and refresh autocmds, so a typo leaves it half working
-    health.error(("Unknown renderer %q"):format(tostring(cfg.renderer)), 'Set renderer = "space" or "nyan"')
+    -- Works, as the space renderer, but a typo is worth pointing out
+    health.warn(
+      ("Unknown renderer %q -- using space"):format(tostring(cfg.renderer)),
+      'Set renderer = "space" or "nyan"'
+    )
   end
   health.info("animation = " .. (cfg.animation.enabled and ("on, fps=" .. cfg.animation.fps) or "off"))
   health.info("fallback = " .. tostring(cfg.fallback))
@@ -123,7 +125,7 @@ M.check = function()
 
   -- Only the active renderer's dependencies are checked: a Kitty warning is a
   -- false alarm for a space user, and git markers mean nothing to the cat.
-  -- Same test as render.lua, so any non-"nyan" value is treated as space.
+  -- Same test as render.lua and init.lua: any non-"nyan" value is space.
   if config.get().renderer == "nyan" then
     health.start("nyan.nvim: nyan renderer")
     check_terminal()

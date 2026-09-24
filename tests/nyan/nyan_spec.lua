@@ -91,6 +91,13 @@ describe("space renderer integration", function()
     local hl = vim.api.nvim_get_hl(0, { name = "NyanShip" })
     assert.is_not.same({}, hl)
   end)
+
+  it("sets an unknown renderer up fully as space, since render.lua draws it as space", function()
+    -- A typo once got the space bar without its git refresh autocmds
+    require("nyan").setup({ renderer = "minimap" })
+    local autocmds = vim.api.nvim_get_autocmds({ group = "NyanNvim", event = "BufWritePost" })
+    assert.is_true(#autocmds > 0)
+  end)
 end)
 
 describe("search command-line wiring", function()

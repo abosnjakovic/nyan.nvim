@@ -36,7 +36,8 @@ local PALETTES = {
 --- Setup highlight groups
 local function setup_highlights()
   local cfg = config.get()
-  if cfg.renderer == "space" then
+  -- Anything but "nyan" is the space renderer, as in render.lua
+  if cfg.renderer ~= "nyan" then
     space_renderer.setup_highlights()
   else
     local palette = PALETTES[cfg.theme] or PALETTES.classic
@@ -107,7 +108,7 @@ local function setup_autocommands()
     })
   end
 
-  if cfg.renderer == "space" then
+  if cfg.renderer ~= "nyan" then
     local git_provider = require("nyan.providers.git")
 
     vim.api.nvim_create_autocmd({ "DiagnosticChanged" }, {
