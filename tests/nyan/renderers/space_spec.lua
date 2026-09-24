@@ -299,6 +299,20 @@ describe("renderers.space", function()
       assert.equals(0xabcdef, hl.fg)
     end)
 
+    it("takes NyanSearch's cterm foreground from Search's cterm background", function()
+      -- Without it, terminals lacking 'termguicolors' draw hits in plain text
+      local orig_search = vim.api.nvim_get_hl(0, { name = "Search", link = false })
+      vim.cmd("highlight clear NyanSearch")
+      vim.api.nvim_set_hl(0, "Search", { fg = 0x000000, bg = 0xabcdef, ctermfg = 0, ctermbg = 11 })
+
+      space.setup_highlights()
+      local hl = vim.api.nvim_get_hl(0, { name = "NyanSearch" })
+
+      vim.api.nvim_set_hl(0, "Search", orig_search)
+      assert.equals(11, hl.ctermfg)
+      assert.is_nil(hl.ctermbg)
+    end)
+
     it("takes NyanViewport's foreground from Normal, without its background", function()
       -- Normal's bg would paint the thumb as a filled block; only Normal's fg
       -- should set it apart from the Comment-coloured trail. ctermfg too, or
