@@ -4,6 +4,12 @@ local M = {}
 -- or scan incrementally only if someone actually hits it on a real file.
 local MAX_LINES = 20000
 
+-- ponytail: lines longer than this are not matched, so a hit inside a minified
+-- or base64 blob gets no marker. A backtracking pattern like \(\w\+\)\s\+\1
+-- took 23 s on one 50k-char run of word characters. Shorter lines can still
+-- stall (79 ms at 500 chars); bounding that needs searchpos() with a timeout.
+local MAX_LINE_LENGTH = 1000
+
 -- bufnr -> { key = string, result = table }
 local cache = {}
 
@@ -80,7 +86,7 @@ local function scan(bufnr, pattern)
   -- not a defensive edge case.
   local match_ok = pcall(function()
     for i, text in ipairs(lines) do
-      if vim.fn.match(text, effective) >= 0 then
+      if #text <= MAX_LINE_LENGTH and vim.fn.match(text, effective) >= 0 then
         table.insert(result, { line = i })
       end
     end

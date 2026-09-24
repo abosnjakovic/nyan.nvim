@@ -215,6 +215,18 @@ describe("providers.search", function()
       vim.api.nvim_buf_delete(big, { force = true })
     end)
 
+    it("skips lines too long to match safely, keeping hits on the rest", function()
+      -- A backtracking pattern on one long blob line (minified, base64) can
+      -- freeze the statusline for seconds, so such lines are not matched.
+      local long = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_lines(long, 0, -1, false, { "target", string.rep("x", 1001) .. "target", "target" })
+      search.set_live("target")
+
+      assert.same({ { line = 1 }, { line = 3 } }, search.get(long))
+
+      vim.api.nvim_buf_delete(long, { force = true })
+    end)
+
     it("returns empty list for an invalid buffer", function()
       search.set_live("target")
       assert.same({}, search.get(99999))
