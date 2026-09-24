@@ -26,6 +26,14 @@ if is_not_a_directory then
   vim.fn.system({"git", "clone", "https://github.com/nvim-lua/plenary.nvim", plenary_dir})
 end
 
+-- macOS's /tmp cleanup deletes old files but keeps directories, leaving a
+-- hollow clone that the check above accepts. plenary would then fail to load
+-- and headless nvim would sit waiting forever, so exit with the fix instead.
+if vim.fn.filereadable(plenary_dir .. "/lua/plenary/busted.lua") == 0 then
+  io.stderr:write("plenary.nvim at " .. plenary_dir .. " is incomplete: delete it, or set PLENARY_DIR\n")
+  vim.cmd("cquit 1")
+end
+
 vim.opt.rtp:append(".")
 vim.opt.rtp:append(plenary_dir)
 
