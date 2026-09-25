@@ -215,6 +215,35 @@ describe("providers.search", function()
       vim.api.nvim_buf_delete(big, { force = true })
     end)
 
+    it("skips lines too long to match safely, keeping hits on the rest", function()
+      -- A backtracking pattern on one long blob line (minified, base64) can
+      -- freeze the statusline for seconds, so such lines are not matched.
+      local long = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_lines(long, 0, -1, false, { "target", string.rep("x", 1001) .. "target", "target" })
+      search.set_live("target")
+
+      assert.same({ { line = 1 }, { line = 3 } }, search.get(long))
+
+      vim.api.nvim_buf_delete(long, { force = true })
+    end)
+
+    it("gives up and marks nothing when a scan overruns its time budget", function()
+      -- Slow patterns across many lines add up to a stalled keystroke. Each
+      -- clock read here jumps 200 ms, so the scan is over budget at once.
+      local real_hrtime = vim.uv.hrtime
+      local now = 0
+      vim.uv.hrtime = function()
+        now = now + 200e6
+        return now
+      end
+      search.set_live("target")
+      local ok, result = pcall(search.get, buf)
+      vim.uv.hrtime = real_hrtime
+
+      assert.is_true(ok)
+      assert.same({}, result)
+    end)
+
     it("returns empty list for an invalid buffer", function()
       search.set_live("target")
       assert.same({}, search.get(99999))

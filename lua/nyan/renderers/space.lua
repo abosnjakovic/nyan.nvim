@@ -77,7 +77,12 @@ M.setup_highlights = function()
   -- a filled block that dominates the bar. Search.bg is the accent colour in
   -- practice; fg is the readable-text colour picked to sit on top of it.
   local search_hl = vim.api.nvim_get_hl(0, { name = "Search", link = false })
-  vim.api.nvim_set_hl(0, "NyanSearch", { fg = search_hl.bg or search_hl.fg, bold = true, default = true })
+  vim.api.nvim_set_hl(0, "NyanSearch", {
+    fg = search_hl.bg or search_hl.fg,
+    ctermfg = search_hl.ctermbg or search_hl.ctermfg,
+    bold = true,
+    default = true,
+  })
   vim.api.nvim_set_hl(0, "NyanDiagError", { link = "DiagnosticError", default = true })
   vim.api.nvim_set_hl(0, "NyanDiagWarn", { link = "DiagnosticWarn", default = true })
   vim.api.nvim_set_hl(0, "NyanDiagInfo", { link = "DiagnosticInfo", default = true })

@@ -76,10 +76,10 @@ describe("health", function()
     assert.is_false(reported("warn", "setup() has not run"))
   end)
 
-  it("errors on an unknown renderer, which setup() only half configures", function()
+  it("warns on an unknown renderer, which quietly falls back to space", function()
     config.setup({ renderer = "minimap" })
     health.check()
-    assert.is_true(reported("error", 'Unknown renderer "minimap"'))
+    assert.is_true(reported("warn", 'Unknown renderer "minimap"'))
   end)
 
   -- Graphics only matter to the cat: a Kitty warning would be a false alarm

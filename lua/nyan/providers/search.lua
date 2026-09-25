@@ -4,6 +4,16 @@ local M = {}
 -- or scan incrementally only if someone actually hits it on a real file.
 local MAX_LINES = 20000
 
+-- ponytail: lines longer than this are not matched, so a hit inside a minified
+-- or base64 blob gets no marker. A backtracking pattern like \(\w\+\)\s\+\1
+-- took 23 s on one 50k-char run of word characters. Shorter lines can still
+-- stall (79 ms at 500 chars); bounding that needs searchpos() with a timeout.
+local MAX_LINE_LENGTH = 1000
+
+-- A scan past this gives up and marks nothing, so slow lines cannot add up to
+-- a stalled keystroke. A normal 20k-line scan takes about 10 ms.
+local MAX_SCAN_MS = 100
+
 -- bufnr -> { key = string, result = table }
 local cache = {}
 
@@ -53,7 +63,8 @@ end
 local function apply_case(pattern)
   if vim.o.ignorecase and vim.o.smartcase then
     -- Strip backslash escapes first, so \V and friends do not read as
-    -- uppercase. This is the same rule Vim itself applies.
+    -- uppercase. Close to Vim's own rule, which also skips \_X and \%X items,
+    -- counts non-ASCII capitals, and turns smartcase off for * and #.
     if pattern:gsub("\\.", ""):find("%u") then
       return "\\C" .. pattern
     end
@@ -78,10 +89,16 @@ local function scan(bufnr, pattern)
   -- A half-typed pattern such as "foo\(" makes match() throw E54. Every
   -- keystroke passes through states like that, so this is the common path,
   -- not a defensive edge case.
+  local deadline = vim.uv.hrtime() + MAX_SCAN_MS * 1e6
   local match_ok = pcall(function()
     for i, text in ipairs(lines) do
-      if vim.fn.match(text, effective) >= 0 then
+      if #text <= MAX_LINE_LENGTH and vim.fn.match(text, effective) >= 0 then
         table.insert(result, { line = i })
+      end
+      if vim.uv.hrtime() > deadline then
+        -- Hits on only the top of the file would mislead
+        result = {}
+        return
       end
     end
   end)
