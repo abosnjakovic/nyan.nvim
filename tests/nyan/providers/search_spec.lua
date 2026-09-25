@@ -227,6 +227,23 @@ describe("providers.search", function()
       vim.api.nvim_buf_delete(long, { force = true })
     end)
 
+    it("gives up and marks nothing when a scan overruns its time budget", function()
+      -- Slow patterns across many lines add up to a stalled keystroke. Each
+      -- clock read here jumps 200 ms, so the scan is over budget at once.
+      local real_hrtime = vim.uv.hrtime
+      local now = 0
+      vim.uv.hrtime = function()
+        now = now + 200e6
+        return now
+      end
+      search.set_live("target")
+      local ok, result = pcall(search.get, buf)
+      vim.uv.hrtime = real_hrtime
+
+      assert.is_true(ok)
+      assert.same({}, result)
+    end)
+
     it("returns empty list for an invalid buffer", function()
       search.set_live("target")
       assert.same({}, search.get(99999))

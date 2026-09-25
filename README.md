@@ -12,7 +12,7 @@ A Neovim statusline component with two rendering modes: a space-themed scroll mi
 
 The space theme turns your statusline into a minimap of the current buffer. The ship `▷` shows your cursor position, and the trail dots covering the lines on screen take your normal text colour, like a scrollbar thumb. Diagnostic markers `✕` show LSP errors/warnings at their proportional file location, git change markers `│` show where hunks are, and search markers `/` show where the current search pattern hits. Colours distinguish severity and change type — you get a spatial overview of your file's health without leaving your code.
 
-Search markers update live as you type in `/` or `?`, so you can see where a pattern lands before committing to it, and they clear with `:noh`.
+Search markers update live as you type in `/` or `?`, so you can see where a pattern lands before committing to it, and they clear with `:noh`. The scan runs on every keystroke, so it skips buffers over 20,000 lines and lines over 1,000 characters, and gives up on any scan that takes more than 100 ms.
 
 Git markers work with gitsigns (instant, in-memory) or fall back to `git diff` (no extra plugins required). Diagnostic markers use Neovim's built-in `vim.diagnostic` API.
 

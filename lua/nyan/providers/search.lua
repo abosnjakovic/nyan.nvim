@@ -10,6 +10,10 @@ local MAX_LINES = 20000
 -- stall (79 ms at 500 chars); bounding that needs searchpos() with a timeout.
 local MAX_LINE_LENGTH = 1000
 
+-- A scan past this gives up and marks nothing, so slow lines cannot add up to
+-- a stalled keystroke. A normal 20k-line scan takes about 10 ms.
+local MAX_SCAN_MS = 100
+
 -- bufnr -> { key = string, result = table }
 local cache = {}
 
@@ -84,10 +88,16 @@ local function scan(bufnr, pattern)
   -- A half-typed pattern such as "foo\(" makes match() throw E54. Every
   -- keystroke passes through states like that, so this is the common path,
   -- not a defensive edge case.
+  local deadline = vim.uv.hrtime() + MAX_SCAN_MS * 1e6
   local match_ok = pcall(function()
     for i, text in ipairs(lines) do
       if #text <= MAX_LINE_LENGTH and vim.fn.match(text, effective) >= 0 then
         table.insert(result, { line = i })
+      end
+      if vim.uv.hrtime() > deadline then
+        -- Hits on only the top of the file would mislead
+        result = {}
+        return
       end
     end
   end)
