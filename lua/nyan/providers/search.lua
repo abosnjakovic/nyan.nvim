@@ -63,7 +63,8 @@ end
 local function apply_case(pattern)
   if vim.o.ignorecase and vim.o.smartcase then
     -- Strip backslash escapes first, so \V and friends do not read as
-    -- uppercase. This is the same rule Vim itself applies.
+    -- uppercase. Close to Vim's own rule, which also skips \_X and \%X items,
+    -- counts non-ASCII capitals, and turns smartcase off for * and #.
     if pattern:gsub("\\.", ""):find("%u") then
       return "\\C" .. pattern
     end
