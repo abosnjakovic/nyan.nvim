@@ -1,5 +1,40 @@
 # Changelog
 
+## [1.3.0](https://github.com/abosnjakovic/nyan.nvim/compare/v1.2.0...v1.3.0) (2026-09-27)
+
+### Features
+
+* check the space renderer's git marker source ([e2d7784](https://github.com/abosnjakovic/nyan.nvim/commit/e2d7784))
+* tint the visible window as a scrollbar thumb ([516d6c2](https://github.com/abosnjakovic/nyan.nvim/commit/516d6c2))
+
+### Bug Fixes
+
+* give up on a hit scan that runs past 100 ms ([e17c85d](https://github.com/abosnjakovic/nyan.nvim/commit/e17c85d))
+* skip lines over 1000 chars in the hit scan ([11c8871](https://github.com/abosnjakovic/nyan.nvim/commit/11c8871))
+* give search hits a cterm colour ([30f5f2f](https://github.com/abosnjakovic/nyan.nvim/commit/30f5f2f))
+* treat any renderer but nyan as space, as render.lua does ([f610ded](https://github.com/abosnjakovic/nyan.nvim/commit/f610ded))
+* ignore external diff tools and forced colour in the fallback ([6dac2da](https://github.com/abosnjakovic/nyan.nvim/commit/6dac2da))
+* put delete markers on buffer lines, top-of-file on line 1 ([40ef4b7](https://github.com/abosnjakovic/nyan.nvim/commit/40ef4b7))
+* place staged markers on the buffer lines they occupy ([37eaa8c](https://github.com/abosnjakovic/nyan.nvim/commit/37eaa8c))
+* stop marking every gitsigns hunk staged ([5da696d](https://github.com/abosnjakovic/nyan.nvim/commit/5da696d))
+* cache provider miss for non-git buffers ([18acc63](https://github.com/abosnjakovic/nyan.nvim/commit/18acc63))
+
+### Performance
+
+* run git diff in the background ([a0f2e1e](https://github.com/abosnjakovic/nyan.nvim/commit/a0f2e1e))
+
+### Code Refactoring
+
+* drop dead base64 shell fallback ([9992293](https://github.com/abosnjakovic/nyan.nvim/commit/9992293))
+
+### Tests
+
+* fail fast on a hollow plenary clone ([bdbcea8](https://github.com/abosnjakovic/nyan.nvim/commit/bdbcea8))
+
+### Documentation
+
+* say where the smartcase check differs from Vim ([05f5dc5](https://github.com/abosnjakovic/nyan.nvim/commit/05f5dc5))
+
 ## [1.2.0](https://github.com/abosnjakovic/nyan.nvim/compare/v1.1.1...v1.2.0) (2026-08-09)
 
 ### Features
